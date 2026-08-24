@@ -7,6 +7,11 @@ import { assertAgentPayloadSafe, pseudonymizeSubject } from "./privacy.js";
 export type AdkOrchestrationResult = {
   requestId: string;
   resultText: string;
+  agentSteps?: Record<string, {
+    status: "completed" | "skipped" | "blocked" | "failed";
+    reason?: string | null;
+    data: Record<string, unknown>;
+  }>;
   promptVersions?: Array<{ name: string; version: string; sha256: string }>;
 };
 
@@ -118,8 +123,12 @@ export async function runAdkOrchestration(input: RecommendationInput, uid: strin
 export function adkResultMatchesCalculator(resultText: string, expectedSavings: number, expectedFinalPrice: number) {
   const candidate = resultText.replace(/^```(?:json)?\s*|\s*```$/gu, "").trim();
   try {
-    const parsed = JSON.parse(candidate) as { recommendedOption?: { savings?: unknown; finalPrice?: unknown } };
-    return parsed.recommendedOption?.savings === expectedSavings && parsed.recommendedOption?.finalPrice === expectedFinalPrice;
+    const parsed = JSON.parse(candidate) as {
+      recommendedOption?: { savings?: unknown; finalPrice?: unknown };
+      data?: { recommendedOption?: { savings?: unknown; finalPrice?: unknown } };
+    };
+    const option = parsed.data?.recommendedOption ?? parsed.recommendedOption;
+    return option?.savings === expectedSavings && option?.finalPrice === expectedFinalPrice;
   } catch {
     return false;
   }

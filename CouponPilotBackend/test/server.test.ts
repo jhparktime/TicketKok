@@ -271,6 +271,14 @@ try {
   );
   assert.equal(
     adkResultMatchesCalculator(JSON.stringify({
+      status: "completed",
+      data: { recommendedOption: { savings: 3_000, finalPrice: 12_000 } }
+    }), 3_000, 12_000),
+    true,
+    "상태 계약으로 감싼 ADK 결과도 Calculator 결과를 그대로 보존해야 합니다"
+  );
+  assert.equal(
+    adkResultMatchesCalculator(JSON.stringify({
       recommendedOption: { savings: 9_999, finalPrice: 5_001 },
       explanation: "AI가 금액을 바꾼 잘못된 설명입니다."
     }), 3_000, 12_000),

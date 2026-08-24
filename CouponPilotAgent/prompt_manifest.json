@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "agents": [
-    { "name": "store_context_agent", "version": "2026-08-24.1+sha256:6bd8ea57781f", "sha256": "6bd8ea57781fd21c33049a479af6f1cb3bb721b5b8dda1d590aa66cd9c1dfef7" },
-    { "name": "coupon_understanding_agent", "version": "2026-08-24.1+sha256:df2827282c7d", "sha256": "df2827282c7d9623f113bcc5b66de15d1baee672e569d70d45c022ddb936befa" },
-    { "name": "benefit_retrieval_agent", "version": "2026-08-24.1+sha256:9b0ae5896614", "sha256": "9b0ae5896614960789b5f921aee021e53005802bb2434001030d7b73ed1a5778" },
-    { "name": "personalization_agent", "version": "2026-08-24.2+sha256:bc24197b9513", "sha256": "bc24197b95132f25e0cd497735db321c13cebc3ec71cc27ad3b64d23e074f3c1" },
-    { "name": "recommendation_agent", "version": "2026-08-24.2+sha256:8d2507602016", "sha256": "8d250760201628a017ed0bc7209886f04bf0f1f1af1452540700f2b2a92155c0" }
+    { "name": "store_context_agent", "version": "2026-08-24.3+sha256:e4ad6e1c946e", "sha256": "e4ad6e1c946e985094c30f7c5e18ac0e22ed80a2b92d3c4bf9e93f7f7d8cf0bf" },
+    { "name": "coupon_understanding_agent", "version": "2026-08-24.3+sha256:3342ebbb0d7b", "sha256": "3342ebbb0d7b9725a90720fcd578c07d0884c847b667c1c41110bc52be6cf832" },
+    { "name": "benefit_retrieval_agent", "version": "2026-08-24.3+sha256:d894e1995726", "sha256": "d894e1995726dbdb63504f3921cbb47f759081f5005c86f4c3bf18d065fec4d8" },
+    { "name": "personalization_agent", "version": "2026-08-24.3+sha256:da7aba468f1a", "sha256": "da7aba468f1a8617b58c4fa8e359ed492e7633b7d9f5ea5fb7d9dca061a1e1a4" },
+    { "name": "recommendation_agent", "version": "2026-08-24.3+sha256:9356335e61d7", "sha256": "9356335e61d72daab9775378252de874cc8ad5d284117b1665763f74aec49972" }
   ]
 }

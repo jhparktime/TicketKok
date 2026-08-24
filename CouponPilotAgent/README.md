@@ -4,13 +4,15 @@
 
 ## 실행 흐름
 
-1. `store_context_agent`: 대한민국 내 지원 매장 맥락 확인
-2. `coupon_understanding_agent`: 등록 쿠폰 후보 검증
-3. `benefit_retrieval_agent`: 통신사·카드 공식 혜택 RAG 검색
-4. `personalization_agent`: 동의된 사용 이력 집계로 방문 주기·만료 위험 해석
-5. `recommendation_agent`: Calculator MCP 결과를 보존해 추천 설명 생성
+`Workflow` 그래프는 의존성이 없는 Agent를 병렬 실행하고, JoinNode가 필요한 결과를 모두 받은 뒤 다음 단계를 시작합니다.
+
+1. `store_context_agent`와 `personalization_agent`를 병렬 실행한다.
+2. 매장 맥락 JoinNode 이후 `coupon_understanding_agent`와 `benefit_retrieval_agent`를 병렬 실행한다.
+3. 쿠폰·혜택 JoinNode 이후 `recommendation_agent`가 Calculator MCP 결과를 보존해 추천 설명을 생성한다.
 
 가격·절약액·중복 가능 여부는 `calculate_best_discount` MCP Tool만 결정합니다.
+
+모든 Agent는 `completed`, `skipped`, `blocked`, `failed` 상태와 사유·구조화 데이터를 반환합니다. 쿠폰이 없거나 브랜드가 맞지 않으면 Coupon Agent는 `skipped`를 반환하며, 후속 단계는 불필요하게 대기하지 않습니다.
 
 ADK의 `before_tool_callback`이 민감 필드, 대한민국 서비스 범위, 통신사, 결제금액과 쿠폰 수를 네트워크 호출 전에 검사합니다. 개인화 Agent에는 원본 구매 이력이 아니라 브랜드별 횟수·사용 간격 집계만 전달합니다. 각 Agent의 출력 토큰은 500~900개로 제한합니다.
 

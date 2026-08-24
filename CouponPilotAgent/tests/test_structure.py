@@ -1,12 +1,12 @@
 import json
 from pathlib import Path
 
-from couponcok_agent.agent import build_root_agent, root_agent
+from couponcok_agent.agent import WORKFLOW_STAGES, build_root_agent, root_agent
 from couponcok_agent.guardrails import validate_tool_call
 from couponcok_agent.model_armor import configured_model_armor_mode
 from couponcok_agent.prompt_versions import PROMPT_METADATA
 from fastapi.testclient import TestClient
-from couponcok_agent.server import api
+from couponcok_agent.server import _normalize_step_result, api
 from google.adk.evaluation.eval_set import EvalSet
 
 
@@ -17,33 +17,36 @@ class FakeTool:
 
 def test_multi_agent_order() -> None:
     assert root_agent.name == "couponcok_orchestrator"
-    assert [agent.name for agent in root_agent.sub_agents] == [
-        "store_context_agent",
-        "coupon_understanding_agent",
-        "benefit_retrieval_agent",
-        "personalization_agent",
-        "recommendation_agent",
+    assert WORKFLOW_STAGES == [
+        ["store_context_agent", "personalization_agent"],
+        ["coupon_understanding_agent", "benefit_retrieval_agent"],
+        ["recommendation_agent"],
     ]
+    assert root_agent.max_concurrency == 2
 
 
 def test_request_workflow_is_fresh_but_keeps_the_contract() -> None:
     fresh = build_root_agent()
     assert fresh is not root_agent
-    assert [agent.name for agent in fresh.sub_agents] == [
-        "store_context_agent",
-        "coupon_understanding_agent",
-        "benefit_retrieval_agent",
-        "personalization_agent",
-        "recommendation_agent",
-    ]
+    assert fresh.name == root_agent.name
+    assert fresh.max_concurrency == 2
 
 
 def test_health_contract() -> None:
     response = TestClient(api).get("/health")
     assert response.status_code == 200
-    assert response.json()["workflow"][-1] == "recommendation_agent"
+    assert response.json()["workflow"][-1] == ["recommendation_agent"]
     assert response.json()["promptVersions"] == PROMPT_METADATA
     assert all("instruction" not in item for item in response.json()["promptVersions"])
+
+
+def test_agent_step_contract_preserves_skip_and_rejects_invalid_status() -> None:
+    assert _normalize_step_result('{"status":"skipped","reason":"no_brand_match","data":{"candidates":[]}}') == {
+        "status": "skipped",
+        "reason": "no_brand_match",
+        "data": {"candidates": []},
+    }
+    assert _normalize_step_result('{"status":"idle","data":{}}')["status"] == "failed"
 
 
 def test_prompt_manifest_has_immutable_metadata_for_all_agents() -> None:

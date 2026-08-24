@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1800" viewBox="0 0 1800 1800">
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0 0L0 6L9 3z" fill="#2747b7"/></marker><filter id="s"><feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#1e3a8a" flood-opacity=".10"/></filter>
+<style>
+.h{font:700 24px 'Apple SD Gothic Neo','Noto Sans KR',Arial;fill:#1643d8}.t{font:700 19px 'Apple SD Gothic Neo','Noto Sans KR',Arial;fill:#17233d}.p{font:500 15px 'Apple SD Gothic Neo','Noto Sans KR',Arial;fill:#516078}.s{font:600 14px 'Apple SD Gothic Neo','Noto Sans KR',Arial;fill:#5533a7}.w{font:700 15px 'Apple SD Gothic Neo','Noto Sans KR',Arial;fill:#fff}</style>
+</defs>
+<rect width="1800" height="1800" fill="#fff"/><g transform="translate(0 220)">
+<text x="80" y="55" style="font:700 34px Apple SD Gothic Neo,Noto Sans KR,Arial;fill:#13265b">CouponKok · Container CI/CD 및 승인형 배포 아키텍처</text>
+<text x="80" y="89" style="font:500 17px Apple SD Gothic Neo,Noto Sans KR,Arial;fill:#64748b">검증된 컨테이너만 후보 리비전으로 배포하고, 사람 승인 후 트래픽을 전환</text>
+<rect x="320" y="115" width="1410" height="700" rx="28" fill="#fbfdff" stroke="#5379ff" stroke-width="2" stroke-dasharray="9 7"/>
+<text x="80" y="150" class="h">1 Source</text>
+<text x="385" y="150" class="h">2 CI Quality Gate</text>
+<text x="690" y="150" class="h">3 Build · Registry</text>
+<text x="1040" y="150" class="h">4 CD · Runtime</text>
+<text x="1390" y="150" class="h">5 Observe · Rollback</text>
+<rect x="75" y="195" width="210" height="530" rx="18" fill="#f7faff" stroke="#dbe5ff" stroke-width="2" filter="url(#s)"/><text x="180.0" y="231" text-anchor="middle" class="t">Developer</text><text x="180.0" y="259" text-anchor="middle" class="p">main branch push</text><text x="180.0" y="284" text-anchor="middle" class="p">기능 단위 commit</text><text x="180.0" y="309" text-anchor="middle" class="p">Prompt manifest 변경</text>
+<rect x="365" y="195" width="250" height="150" rx="18" fill="#eef4ff" stroke="#9db6ff" stroke-width="2" filter="url(#s)"/><text x="490.0" y="231" text-anchor="middle" class="t">GitHub Actions</text><text x="490.0" y="259" text-anchor="middle" class="p">lint · API 계약 테스트</text><text x="490.0" y="284" text-anchor="middle" class="p">Golden Test 60/60</text><text x="490.0" y="309" text-anchor="middle" class="p">ADK evalset schema</text>
+<rect x="365" y="385" width="250" height="150" rx="18" fill="#faf5ff" stroke="#c4b5fd" stroke-width="2" filter="url(#s)"/><text x="490.0" y="421" text-anchor="middle" class="t">Prompt / RAG Gate</text><text x="490.0" y="449" text-anchor="middle" class="p">SHA-256 · 버전 일치</text><text x="490.0" y="474" text-anchor="middle" class="p">문서 계약 · 권리 확인</text><text x="490.0" y="499" text-anchor="middle" class="p">실패 시 중단</text>
+<rect x="365" y="575" width="250" height="105" rx="18" fill="#fff8e8" stroke="#fbbf24" stroke-width="2" filter="url(#s)"/><text x="490.0" y="611" text-anchor="middle" class="t">Human Review</text><text x="490.0" y="639" text-anchor="middle" class="p">릴리스·트래픽 승인</text>
+<rect x="685" y="195" width="270" height="150" rx="18" fill="#eef4ff" stroke="#9db6ff" stroke-width="2" filter="url(#s)"/><text x="820.0" y="231" text-anchor="middle" class="t">Cloud Build</text><text x="820.0" y="259" text-anchor="middle" class="p">Docker image build</text><text x="820.0" y="284" text-anchor="middle" class="p">테스트 통과 소스만 빌드</text><text x="820.0" y="309" text-anchor="middle" class="p">이미지 digest 생성</text>
+<rect x="685" y="400" width="270" height="130" rx="18" fill="#f8faff" stroke="#dbe5ff" stroke-width="2" filter="url(#s)"/><text x="820.0" y="436" text-anchor="middle" class="t">Artifact Registry</text><text x="820.0" y="464" text-anchor="middle" class="p">API · ADK · MCP 이미지</text><text x="820.0" y="489" text-anchor="middle" class="p">불변 digest · 버전 보관</text>
+<rect x="1025" y="195" width="285" height="150" rx="18" fill="#ecfdf5" stroke="#86efac" stroke-width="2" filter="url(#s)"/><text x="1167.5" y="231" text-anchor="middle" class="t">Candidate Cloud Run</text><text x="1167.5" y="259" text-anchor="middle" class="p">API · ADK · MCP 컨테이너</text><text x="1167.5" y="284" text-anchor="middle" class="p">서비스 계정 · Secret 주입</text><text x="1167.5" y="309" text-anchor="middle" class="p">헬스 체크</text>
+<rect x="1025" y="400" width="285" height="130" rx="18" fill="#fff8e8" stroke="#fbbf24" stroke-width="2" filter="url(#s)"/><text x="1167.5" y="436" text-anchor="middle" class="t">Traffic Promotion</text><text x="1167.5" y="464" text-anchor="middle" class="p">사람 승인 후 revision 전환</text><text x="1167.5" y="489" text-anchor="middle" class="p">자동 승인 경로 없음</text>
+<rect x="1025" y="575" width="285" height="105" rx="18" fill="#fef2f2" stroke="#fca5a5" stroke-width="2" filter="url(#s)"/><text x="1167.5" y="611" text-anchor="middle" class="t">Rollback</text><text x="1167.5" y="639" text-anchor="middle" class="p">이전 revision으로 복구</text><text x="1167.5" y="664" text-anchor="middle" class="p">검증된 RAG index 유지</text>
+<rect x="1380" y="195" width="265" height="150" rx="18" fill="#fcfaff" stroke="#eadcff" stroke-width="2" filter="url(#s)"/><text x="1512.5" y="231" text-anchor="middle" class="t">Cloud Logging · Trace</text><text x="1512.5" y="259" text-anchor="middle" class="p">요청 지연 · 오류 · Tool trace</text><text x="1512.5" y="284" text-anchor="middle" class="p">속성 키 살균</text>
+<rect x="1380" y="400" width="265" height="130" rx="18" fill="#fcfaff" stroke="#eadcff" stroke-width="2" filter="url(#s)"/><text x="1512.5" y="436" text-anchor="middle" class="t">Release Evaluation</text><text x="1512.5" y="464" text-anchor="middle" class="p">Staging Holdout · Trajectory</text><text x="1512.5" y="489" text-anchor="middle" class="p">운영 전 수동 live 평가</text>
+<rect x="1380" y="575" width="265" height="105" rx="18" fill="#fcfaff" stroke="#eadcff" stroke-width="2" filter="url(#s)"/><text x="1512.5" y="611" text-anchor="middle" class="t">Alert · Cost</text><text x="1512.5" y="639" text-anchor="middle" class="p">오류율 · quota · 비용 경보</text>
+<path d="M285 270 L365 270" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M490 345 L490 385" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M615 270 L685 270" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M820 345 L820 400" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M955 465 L1025 270" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M1168 345 L1168 400" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M1168 530 L1168 575" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M1310 270 L1380 270" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M1310 465 L1380 465" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M1310 625 L1380 625" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<text x="1025" y="790" text-anchor="middle" class="h">GCP 프로젝트</text>
+</g></svg>

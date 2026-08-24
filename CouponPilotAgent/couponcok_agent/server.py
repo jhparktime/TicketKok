@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 from secrets import compare_digest
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import FastAPI, Header, HTTPException
 from google.adk.runners import Runner
@@ -13,7 +13,7 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from pydantic import BaseModel, ConfigDict, Field
 
-from .agent import build_root_agent, root_agent
+from .agent import STEP_OUTPUT_KEYS, WORKFLOW_STAGES, build_root_agent, root_agent
 from .model_armor import enforce_model_armor
 from .prompt_versions import PROMPT_METADATA
 
@@ -92,6 +92,28 @@ class OrchestrationRequest(StrictPayload):
     recommendation: RecommendationPayload
 
 
+def _normalize_step_result(value: Any) -> dict[str, Any]:
+    """Return a safe status object even when a model produced malformed output."""
+
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return {"status": "failed", "reason": "invalid_agent_json", "data": {}}
+    if not isinstance(value, dict):
+        return {"status": "failed", "reason": "missing_agent_output", "data": {}}
+    status = value.get("status")
+    if status not in {"completed", "skipped", "blocked", "failed"}:
+        return {"status": "failed", "reason": "invalid_agent_status", "data": {}}
+    reason = value.get("reason")
+    data = value.get("data")
+    return {
+        "status": status,
+        "reason": reason if isinstance(reason, str) else None,
+        "data": data if isinstance(data, dict) else {},
+    }
+
+
 def _authorize(token: str | None) -> None:
     expected = os.getenv("ADK_INTERNAL_TOKEN", "")
     if not expected or not token or not compare_digest(token, expected):
@@ -103,7 +125,7 @@ async def health() -> dict:
     return {
         "ok": True,
         "service": "couponcok-adk",
-        "workflow": [agent.name for agent in root_agent.sub_agents],
+        "workflow": WORKFLOW_STAGES,
         "promptVersions": PROMPT_METADATA,
     }
 
@@ -155,4 +177,18 @@ async def orchestrate(
         await enforce_model_armor(final_text, "response")
     except RuntimeError as error:
         raise HTTPException(status_code=502, detail="Recommendation response blocked by safety policy") from error
-    return {"requestId": request.request_id, "resultText": final_text, "promptVersions": PROMPT_METADATA}
+    session = await request_session_service.get_session(
+        app_name=APP_NAME,
+        user_id=request.user_reference,
+        session_id=session_id,
+    )
+    agent_steps = {
+        agent_name: _normalize_step_result(session.state.get(output_key) if session else None)
+        for agent_name, output_key in STEP_OUTPUT_KEYS.items()
+    }
+    return {
+        "requestId": request.request_id,
+        "resultText": final_text,
+        "agentSteps": agent_steps,
+        "promptVersions": PROMPT_METADATA,
+    }

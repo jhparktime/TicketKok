@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1800" viewBox="0 0 1800 1800">
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#1e3a5f" flood-opacity=".10"/></filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#4f6ee8"/></marker>
+    <style>
+      .title{font:700 34px 'Apple SD Gothic Neo','Noto Sans KR',Arial,sans-serif;fill:#14213d}.subtitle{font:500 18px 'Apple SD Gothic Neo','Noto Sans KR',Arial,sans-serif;fill:#63718a}.group{font:700 23px 'Apple SD Gothic Neo','Noto Sans KR',Arial,sans-serif;fill:#1d4ed8}.box-title{font:700 20px 'Apple SD Gothic Neo','Noto Sans KR',Arial,sans-serif;fill:#14213d}.box-text{font:500 16px 'Apple SD Gothic Neo','Noto Sans KR',Arial,sans-serif;fill:#42526b}.small{font:500 14px 'Apple SD Gothic Neo','Noto Sans KR',Arial,sans-serif;fill:#516079}.tiny{font:600 13px 'Apple SD Gothic Neo','Noto Sans KR',Arial,sans-serif;fill:#5d3aa8}.step{font:700 16px 'Apple SD Gothic Neo','Noto Sans KR',Arial,sans-serif;fill:#ffffff}.pill{font:700 14px 'Apple SD Gothic Neo','Noto Sans KR',Arial,sans-serif;fill:#3553b8}.security{font:700 17px 'Apple SD Gothic Neo','Noto Sans KR',Arial,sans-serif;fill:#2c4778}
+    </style>
+  </defs>
+  <rect width="1800" height="1800" fill="#fbfdff"/>
+  <g transform="translate(0 210)">
+  <text x="80" y="78" class="title">CouponKok · 병렬 Multi-Agent 및 MCP 아키텍처</text>
+  <text x="80" y="112" class="subtitle">금액은 Calculator MCP Tool만 확정하고, Gemini는 공식 근거 기반 설명만 생성</text>
+
+  <!-- Column headers -->
+  <text x="98" y="170" class="group">1  Client</text>
+  <text x="370" y="170" class="group">2  Identity</text>
+  <text x="650" y="170" class="group">3  Cloud Run API</text>
+  <text x="980" y="170" class="group" fill="#7c3aed">4  ADK Workflow</text>
+  <text x="1400" y="170" class="group">5  MCP · Data</text>
+
+  <!-- Client -->
+  <g filter="url(#shadow)"><rect x="75" y="195" width="225" height="500" rx="26" fill="#fff" stroke="#9db6ff" stroke-width="2"/></g>
+  <rect x="100" y="220" width="175" height="88" rx="18" fill="#eef4ff"/>
+  <text x="188" y="257" text-anchor="middle" class="box-title">iPhone 앱</text><text x="188" y="283" text-anchor="middle" class="box-text">SwiftUI</text>
+  <g><rect x="100" y="330" width="175" height="58" rx="14" fill="#f6f9ff"/><text x="188" y="365" text-anchor="middle" class="box-text">Vision OCR · 로컬 마스킹</text></g>
+  <g><rect x="100" y="402" width="175" height="58" rx="14" fill="#f6f9ff"/><text x="188" y="437" text-anchor="middle" class="box-text">Core Location · 지오펜스</text></g>
+  <g><rect x="100" y="474" width="175" height="58" rx="14" fill="#f6f9ff"/><text x="188" y="509" text-anchor="middle" class="box-text">로컬 알림 · HITL</text></g>
+  <g><rect x="100" y="548" width="175" height="116" rx="14" fill="#ecfdf5" stroke="#86efac"/><text x="188" y="581" text-anchor="middle" class="box-title" fill="#166534">SecureCouponBarcodeStore</text><text x="188" y="608" text-anchor="middle" class="box-text">iPhone Keychain 암호화 저장</text><text x="188" y="634" text-anchor="middle" class="small">서버 · Firebase · Gemini 미전송</text></g>
+
+  <!-- Firebase -->
+  <g filter="url(#shadow)"><rect x="345" y="195" width="235" height="500" rx="26" fill="#fff" stroke="#9db6ff" stroke-width="2"/></g>
+  <rect x="370" y="225" width="185" height="120" rx="18" fill="#fff8e7"/>
+  <text x="462" y="267" text-anchor="middle" class="box-title">Firebase Authentication</text><text x="462" y="295" text-anchor="middle" class="box-text">익명 인증 + Apple 계정 연결</text><text x="462" y="321" text-anchor="middle" class="small">Firebase ID Token</text>
+  <rect x="370" y="370" width="185" height="92" rx="18" fill="#effcf7"/><text x="462" y="409" text-anchor="middle" class="box-title">Firebase App Check</text><text x="462" y="437" text-anchor="middle" class="box-text">monitor 모드</text>
+  <rect x="370" y="487" width="185" height="142" rx="18" fill="#f6f9ff"/><text x="462" y="528" text-anchor="middle" class="box-title">동의 관리</text><text x="462" y="556" text-anchor="middle" class="box-text">필수 처리 · 개인화 · 위치</text><text x="462" y="584" text-anchor="middle" class="small">알림 동의 분리</text>
+
+  <!-- API -->
+  <g filter="url(#shadow)"><rect x="625" y="195" width="290" height="500" rx="26" fill="#fff" stroke="#9db6ff" stroke-width="2"/></g>
+  <rect x="650" y="225" width="240" height="120" rx="18" fill="#eef4ff"/><text x="770" y="269" text-anchor="middle" class="box-title">Cloud Run API</text><text x="770" y="297" text-anchor="middle" class="box-text">Firebase Token 검증 · HMAC 가명화</text><text x="770" y="323" text-anchor="middle" class="small">추천 오케스트레이션</text>
+  <rect x="650" y="370" width="240" height="96" rx="18" fill="#ecfdf5"/><text x="770" y="408" text-anchor="middle" class="box-title">결정론적 추천 경로</text><text x="770" y="437" text-anchor="middle" class="box-text">쿠폰 · RAG · Calculator 결과 유지</text>
+  <rect x="650" y="491" width="240" height="137" rx="18" fill="#faf5ff" stroke="#d8b4fe"/><text x="770" y="530" text-anchor="middle" class="box-title">선택적 ADK 호출</text><text x="770" y="558" text-anchor="middle" class="box-text">shadow / explanation 모드</text><text x="770" y="586" text-anchor="middle" class="small">Agent 장애 시에도 쿠폰 단독 계산</text>
+
+  <!-- Workflow -->
+  <g filter="url(#shadow)"><rect x="950" y="195" width="400" height="500" rx="26" fill="#fff" stroke="#c4b5fd" stroke-width="2"/></g>
+  <text x="1150" y="225" text-anchor="middle" class="box-title" fill="#5b21b6">ADK Workflow · max concurrency 2</text>
+  <rect x="980" y="245" width="135" height="68" rx="15" fill="#f5f3ff" stroke="#c4b5fd"/><text x="1047" y="275" text-anchor="middle" class="box-title">Store Agent</text><text x="1047" y="298" text-anchor="middle" class="small">매장 맥락</text>
+  <rect x="1185" y="245" width="135" height="68" rx="15" fill="#f5f3ff" stroke="#c4b5fd"/><text x="1252" y="275" text-anchor="middle" class="box-title">Personalization</text><text x="1252" y="298" text-anchor="middle" class="small">동의된 집계 이력</text>
+  <path d="M1047 313 L1130 325 M1252 313 L1170 325" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arrow)"/>
+  <circle cx="1150" cy="335" r="25" fill="#fff7ed" stroke="#f59e0b" stroke-width="2"/><text x="1150" y="340" text-anchor="middle" class="small">Join</text>
+  <path d="M1150 360 V382" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="980" y="396" width="135" height="68" rx="15" fill="#f5f3ff" stroke="#c4b5fd"/><text x="1047" y="426" text-anchor="middle" class="box-title">Coupon Agent</text><text x="1047" y="449" text-anchor="middle" class="small">후보 선별</text>
+  <rect x="1185" y="396" width="135" height="68" rx="15" fill="#f5f3ff" stroke="#c4b5fd"/><text x="1252" y="426" text-anchor="middle" class="box-title">Benefit Agent</text><text x="1252" y="449" text-anchor="middle" class="small">공식 혜택 RAG</text>
+  <path d="M1047 464 L1130 483 M1252 464 L1170 483" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arrow)"/>
+  <circle cx="1150" cy="493" r="25" fill="#fff7ed" stroke="#f59e0b" stroke-width="2"/><text x="1150" y="498" text-anchor="middle" class="small">Join</text>
+  <path d="M1150 518 V538" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="1018" y="550" width="264" height="66" rx="15" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/><text x="1150" y="579" text-anchor="middle" class="box-title">Recommendation Agent · Gemini</text><text x="1150" y="602" text-anchor="middle" class="small">계산 결과·공식 근거 기반 설명만 생성</text>
+  <rect x="980" y="640" width="340" height="35" rx="16" fill="#f8fafc"/><text x="1150" y="663" text-anchor="middle" class="tiny">상태 계약: completed · skipped · blocked · failed</text>
+
+  <!-- MCP & Data -->
+  <g filter="url(#shadow)"><rect x="1385" y="195" width="335" height="500" rx="26" fill="#fff" stroke="#9db6ff" stroke-width="2"/></g>
+  <rect x="1410" y="225" width="285" height="92" rx="18" fill="#ecfdf5" stroke="#6ee7b7"/><text x="1552" y="262" text-anchor="middle" class="box-title">Private MCP Tool Service</text><text x="1552" y="290" text-anchor="middle" class="box-text">내부 토큰 · Cloud Run IAM</text>
+  <rect x="1410" y="337" width="136" height="65" rx="14" fill="#f6f9ff"/><text x="1478" y="365" text-anchor="middle" class="box-title">Store Tools</text><text x="1478" y="388" text-anchor="middle" class="small">매장·지도 검증</text>
+  <rect x="1559" y="337" width="136" height="65" rx="14" fill="#f6f9ff"/><text x="1627" y="365" text-anchor="middle" class="box-title">RAG Tool</text><text x="1627" y="388" text-anchor="middle" class="small">공식 혜택 검색</text>
+  <rect x="1410" y="420" width="285" height="84" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/><text x="1552" y="453" text-anchor="middle" class="box-title">Calculator Tool</text><text x="1552" y="481" text-anchor="middle" class="box-text">최종가 · 절약액 · 가격 기준 순위만 확정</text>
+  <rect x="1410" y="528" width="285" height="126" rx="16" fill="#f8fafc"/><text x="1552" y="560" text-anchor="middle" class="box-title">승인된 데이터</text><text x="1552" y="588" text-anchor="middle" class="box-text">Firestore · Cloud Storage RAG</text><text x="1552" y="614" text-anchor="middle" class="box-text">data.go.kr · 지도 API fallback</text><text x="1552" y="640" text-anchor="middle" class="small">공식성·유효기간·권리 확인</text>
+
+  <!-- Main arrows -->
+  <path d="M300 445 H345" stroke="#4f6ee8" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M580 445 H625" stroke="#4f6ee8" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M915 555 H950" stroke="#8b5cf6" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#arrow)"/>
+  <text x="924" y="535" class="small" fill="#7c3aed">선택적</text>
+  <path d="M1350 583 H1385" stroke="#8b5cf6" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M1410 462 H1350" stroke="#10b981" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- HITL -->
+  <g filter="url(#shadow)"><rect x="400" y="745" width="1000" height="126" rx="24" fill="#fff" stroke="#d8b4fe" stroke-width="2"/></g>
+  <text x="450" y="785" class="box-title" fill="#6b21a8">Human-in-the-Loop</text>
+  <rect x="650" y="765" width="180" height="72" rx="18" fill="#faf5ff"/><text x="740" y="796" text-anchor="middle" class="box-title">사용자 추천 확인</text><text x="740" y="821" text-anchor="middle" class="small">자동 사용 처리 금지</text>
+  <path d="M830 801 H875" stroke="#a855f7" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="890" y="765" width="180" height="72" rx="18" fill="#faf5ff"/><text x="980" y="796" text-anchor="middle" class="box-title">실제 바코드 표시</text><text x="980" y="821" text-anchor="middle" class="small">기기 Keychain 복원</text>
+  <path d="M1070 801 H1115" stroke="#a855f7" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="1130" y="765" width="215" height="72" rx="18" fill="#faf5ff"/><text x="1237" y="796" text-anchor="middle" class="box-title">결제 완료·사용 처리</text><text x="1237" y="821" text-anchor="middle" class="small">5초 실행 취소 · 기록 복원</text>
+
+  <!-- Security -->
+  <g filter="url(#shadow)"><rect x="75" y="920" width="1645" height="105" rx="24" fill="#f5f8ff" stroke="#b8c8f4" stroke-width="2"/></g>
+  <text x="115" y="960" class="security">보안 · 관측 기반</text>
+  <text x="405" y="960" class="security">Secret Manager</text><text x="405" y="987" class="small">키·내부 토큰 분리</text>
+  <text x="675" y="960" class="security">Cloud DLP</text><text x="675" y="987" class="small">민감정보 재검사</text>
+  <text x="930" y="960" class="security">Model Armor</text><text x="930" y="987" class="small">monitor / enforce 전환 구조</text>
+  <text x="1240" y="960" class="security">OpenTelemetry · Cloud Trace</text><text x="1240" y="987" class="small">Cloud Logging · 속성 살균</text>
+  </g>
+</svg>

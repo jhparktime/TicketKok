@@ -957,6 +957,11 @@ struct ContentView: View {
             }
         }
         .navigationTitle("내 정보")
+        // The tab dock is an overlay, so the final legal/brand disclosure must be able to
+        // scroll entirely above it on compact iPhone screens.
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 116)
+        }
         .onAppear {
             selectedCarrier = appState.profile.carrier
             selectedMembershipGrade = appState.profile.membershipGrade
@@ -1805,6 +1810,7 @@ struct BrandLogo: View {
         case .ediya: 1.42
         case .ashleyqueens: 1.20
         case .hollys: 1.48
+        case .mega, .compose, .paiks, .coffeebean, .gongcha, .theventi: 1.08
         case .cu, .gs25, .seveneleven, .emart24: 1
         default: 1
         }
@@ -1871,6 +1877,18 @@ struct BrandLogo: View {
                 .foregroundStyle(AppPalette.ink)
         case .hollys:
             Image("BrandHollysCoffee").resizable().scaledToFit()
+        case .mega:
+            Image("BrandMegaMGC").resizable().scaledToFit()
+        case .compose:
+            Image("BrandComposeCoffee").resizable().scaledToFit()
+        case .paiks:
+            Image("BrandPaiksCoffee").resizable().scaledToFit()
+        case .coffeebean:
+            Image("BrandCoffeeBean").resizable().scaledToFit()
+        case .gongcha:
+            Image("BrandGongCha").resizable().scaledToFit()
+        case .theventi:
+            Image("BrandTheVenti").resizable().scaledToFit()
         case .cu:
             ConvenienceBrandMark(label: "CU", color: Color(red: 0.43, green: 0.16, blue: 0.67))
         case .gs25:

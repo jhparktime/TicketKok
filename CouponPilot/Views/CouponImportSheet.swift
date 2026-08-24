@@ -88,43 +88,59 @@ struct CouponImportSheet: View {
 
     private var imagePicker: some View {
         let displayedImage = previewImage
-        return PhotosPicker(selection: $selectedItem, matching: .images) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(.thinMaterial)
-                    .overlay { RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(AppPalette.accent.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [7])) }
-                if let displayedImage {
-                    Image(uiImage: displayedImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(height: 208)
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                        .overlay(alignment: .bottomTrailing) {
-                            Label("사진 변경", systemImage: "photo.on.rectangle")
-                                .font(.caption.weight(.bold))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 7)
-                                .background(.black.opacity(0.55), in: Capsule())
-                                .foregroundStyle(.white)
-                                .padding(12)
+        return VStack(spacing: 10) {
+            PhotosPicker(selection: $selectedItem, matching: .images) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(.thinMaterial)
+                        .overlay { RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(AppPalette.accent.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [7])) }
+                    if let displayedImage {
+                        Image(uiImage: displayedImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: 208)
+                            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                            .overlay(alignment: .bottomTrailing) {
+                                Label("사진 변경", systemImage: "photo.on.rectangle")
+                                    .font(.caption.weight(.bold))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 7)
+                                    .background(.black.opacity(0.55), in: Capsule())
+                                    .foregroundStyle(.white)
+                                    .padding(12)
+                            }
+                    } else {
+                        VStack(spacing: 10) {
+                            Image(systemName: "photo.badge.plus")
+                                .font(.system(size: 34, weight: .medium))
+                                .foregroundStyle(AppPalette.accent)
+                            Text("쿠폰 이미지 선택")
+                                .font(.headline)
+                            Text("스크린샷이나 사진을 골라주세요")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
-                } else {
-                    VStack(spacing: 10) {
-                        Image(systemName: "photo.badge.plus")
-                            .font(.system(size: 34, weight: .medium))
-                            .foregroundStyle(AppPalette.accent)
-                        Text("쿠폰 이미지 선택")
-                            .font(.headline)
-                        Text("스크린샷이나 사진을 골라주세요")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
                 }
+                .frame(maxWidth: .infinity)
+                .frame(height: 208)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 208)
+            .buttonStyle(.plain)
+
+            if AppState.isSubmissionSimulation {
+                Button {
+                    Task { await loadBundledDemoCoupon() }
+                } label: {
+                    Label("시연용 쿠폰 사진 불러오기", systemImage: "play.rectangle.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
+                .buttonStyle(.bordered)
+                .tint(AppPalette.accent)
+                .accessibilityHint("번들에 포함된 메가MGC커피 쿠폰 사진으로 OCR 시연을 시작합니다")
+            }
         }
-        .buttonStyle(.plain)
     }
 
     private var couponForm: some View {
@@ -260,15 +276,33 @@ struct CouponImportSheet: View {
 
     @MainActor
     private func recognize(_ item: PhotosPickerItem) async {
-        isRecognizing = true
-        errorMessage = nil
-        defer { isRecognizing = false }
-
         do {
             guard let data = try await item.loadTransferable(type: Data.self),
                   let image = UIImage(data: data) else {
                 throw OCRServiceError.invalidImage
             }
+            await recognize(image)
+        } catch {
+            errorMessage = "이미지를 읽지 못했어요. 더 선명한 쿠폰 이미지를 선택해 주세요."
+        }
+    }
+
+    @MainActor
+    private func loadBundledDemoCoupon() async {
+        guard let image = UIImage(named: "CouponOCRDemo") else {
+            errorMessage = "시연용 쿠폰 이미지를 찾지 못했어요. 앱 번들을 다시 빌드해 주세요."
+            return
+        }
+        await recognize(image)
+    }
+
+    @MainActor
+    private func recognize(_ image: UIImage) async {
+        isRecognizing = true
+        errorMessage = nil
+        defer { isRecognizing = false }
+
+        do {
             previewImage = image
             let ocr = CouponOCRService()
             async let recognizedText = ocr.recognizeRawText(in: image)

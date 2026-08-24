@@ -7,10 +7,11 @@ Agents may validate, retrieve evidence and explain, but must never invent or alt
 from __future__ import annotations
 
 import os
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
-from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.agents import LlmAgent
 from google.adk.apps import App
 from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import (
@@ -19,6 +20,9 @@ from google.adk.tools.mcp_tool.mcp_session_manager import (
 from google.auth.transport.requests import Request as GoogleAuthRequest
 from google.genai import types
 from google.oauth2 import id_token
+from pydantic import BaseModel, ConfigDict, Field
+
+from google.adk.workflow import JoinNode, Workflow, node
 
 from .guardrails import validate_tool_call
 from .prompt_versions import PROMPTS
@@ -39,6 +43,37 @@ if os.getenv("AGENTOPS_API_KEY"):
 MODEL = os.getenv("ADK_MODEL", "gemini-2.5-flash")
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://127.0.0.1:8081/mcp")
 MCP_INTERNAL_TOKEN = os.getenv("MCP_INTERNAL_TOKEN", "")
+
+
+class AgentStepResult(BaseModel):
+    """A machine-readable handoff contract for every non-pricing Agent.
+
+    `skipped` is an intentional, successful no-op: downstream Agents must not
+    wait for a coupon or benefit that cannot exist for this request. `blocked`
+    means the app needs more user input; `failed` means an operational failure.
+    Price authority is deliberately excluded from this contract.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["completed", "skipped", "blocked", "failed"]
+    reason: str | None = Field(default=None, max_length=240)
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+WORKFLOW_STAGES = [
+    ["store_context_agent", "personalization_agent"],
+    ["coupon_understanding_agent", "benefit_retrieval_agent"],
+    ["recommendation_agent"],
+]
+
+STEP_OUTPUT_KEYS = {
+    "store_context_agent": "store_context",
+    "coupon_understanding_agent": "coupon_context",
+    "benefit_retrieval_agent": "benefit_context",
+    "personalization_agent": "personalization_context",
+    "recommendation_agent": "recommendation_result",
+}
 
 
 def _generation_config(max_output_tokens: int) -> types.GenerateContentConfig:
@@ -70,11 +105,16 @@ def _mcp_toolset(*tool_names: str) -> McpToolset:
     )
 
 
-def build_root_agent() -> SequentialAgent:
-    """Create a workflow for one orchestration request.
+def build_root_agent() -> Workflow:
+    """Create a dependency-aware workflow for one orchestration request.
 
     Cloud Run ID tokens have a finite lifetime. Creating toolsets at request time ensures an
     MCP call always carries a fresh service-account token instead of an expired startup token.
+
+    The graph intentionally has two fan-out stages. Store context and aggregate-only
+    personalization are independent. Once store context is ready, coupon candidate
+    selection and official-benefit retrieval can proceed concurrently. A JoinNode prevents
+    Calculator-backed recommendation from running before both results are available.
     """
 
     store_context_agent = LlmAgent(
@@ -85,6 +125,7 @@ def build_root_agent() -> SequentialAgent:
         tools=[_mcp_toolset("search_nearby_stores", "verify_store_with_external_maps")],
         before_tool_callback=validate_tool_call,
         generate_content_config=_generation_config(500),
+        output_schema=AgentStepResult,
         output_key="store_context",
     )
 
@@ -94,6 +135,7 @@ def build_root_agent() -> SequentialAgent:
         description="등록된 쿠폰의 브랜드·할인 조건을 검증하는 전문 에이전트",
         instruction=PROMPTS["coupon_understanding_agent"],
         generate_content_config=_generation_config(700),
+        output_schema=AgentStepResult,
         output_key="coupon_context",
     )
 
@@ -105,6 +147,7 @@ def build_root_agent() -> SequentialAgent:
         tools=[_mcp_toolset("retrieve_carrier_benefits")],
         before_tool_callback=validate_tool_call,
         generate_content_config=_generation_config(700),
+        output_schema=AgentStepResult,
         output_key="benefit_context",
     )
 
@@ -114,6 +157,7 @@ def build_root_agent() -> SequentialAgent:
         description="동의된 쿠폰 사용 이력 집계를 해석해 만료 위험과 방문 주기를 설명하는 전문 에이전트",
         instruction=PROMPTS["personalization_agent"],
         generate_content_config=_generation_config(600),
+        output_schema=AgentStepResult,
         output_key="personalization_context",
     )
 
@@ -125,18 +169,30 @@ def build_root_agent() -> SequentialAgent:
         tools=[_mcp_toolset("calculate_best_discount")],
         before_tool_callback=validate_tool_call,
         generate_content_config=_generation_config(900),
+        output_schema=AgentStepResult,
         output_key="recommendation_result",
     )
 
-    return SequentialAgent(
+    store_node = node(store_context_agent)
+    personalization_node = node(personalization_agent)
+    coupon_node = node(coupon_understanding_agent)
+    benefit_node = node(benefit_retrieval_agent)
+    recommendation_node = node(recommendation_agent)
+    first_join = JoinNode(name="store_personalization_join")
+    second_join = JoinNode(name="coupon_benefit_join")
+
+    return Workflow(
         name="couponcok_orchestrator",
-        description="매장 맥락, 쿠폰 후보, 공식 혜택, 결정론적 계산을 순서대로 실행하는 쿠폰콕 오케스트레이터",
-        sub_agents=[
-            store_context_agent,
-            coupon_understanding_agent,
-            benefit_retrieval_agent,
-            personalization_agent,
-            recommendation_agent,
+        description="의존성이 있는 단계만 순서대로 실행하고, 독립 Agent는 병렬 실행하는 쿠폰콕 오케스트레이터",
+        max_concurrency=2,
+        edges=[
+            ("START", (store_node, personalization_node)),
+            (store_node, first_join),
+            (personalization_node, first_join),
+            (first_join, (coupon_node, benefit_node)),
+            (coupon_node, second_join),
+            (benefit_node, second_join),
+            (second_join, recommendation_node),
         ],
     )
 

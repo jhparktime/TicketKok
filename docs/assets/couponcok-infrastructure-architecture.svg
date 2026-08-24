@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1800" viewBox="0 0 1800 1800">
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0 0L0 6L9 3z" fill="#2747b7"/></marker><filter id="s"><feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#1e3a8a" flood-opacity=".10"/></filter>
+<style>
+.h{font:700 24px 'Apple SD Gothic Neo','Noto Sans KR',Arial;fill:#1643d8}.t{font:700 19px 'Apple SD Gothic Neo','Noto Sans KR',Arial;fill:#17233d}.p{font:500 15px 'Apple SD Gothic Neo','Noto Sans KR',Arial;fill:#516078}.s{font:600 14px 'Apple SD Gothic Neo','Noto Sans KR',Arial;fill:#5533a7}.w{font:700 15px 'Apple SD Gothic Neo','Noto Sans KR',Arial;fill:#fff}</style>
+</defs>
+<rect width="1800" height="1800" fill="#fff"/><g transform="translate(0 220)">
+<text x="80" y="55" style="font:700 34px Apple SD Gothic Neo,Noto Sans KR,Arial;fill:#13265b">CouponKok · Terraform IaC 인프라 아키텍처</text>
+<text x="80" y="89" style="font:500 17px Apple SD Gothic Neo,Noto Sans KR,Arial;fill:#64748b">코드로 재현하는 런타임 경계 · 최소 권한 IAM · 비밀값 미기록</text>
+<rect x="320" y="115" width="1410" height="700" rx="28" fill="#fbfdff" stroke="#5379ff" stroke-width="2" stroke-dasharray="9 7"/>
+<text x="80" y="150" class="h">1 Repository</text>
+<text x="385" y="150" class="h">2 Terraform</text>
+<text x="690" y="150" class="h">3 Compute</text>
+<text x="1040" y="150" class="h">4 Data · Operations</text>
+<text x="1390" y="150" class="h">5 Security</text>
+<rect x="75" y="195" width="210" height="530" rx="18" fill="#f7faff" stroke="#dbe5ff" stroke-width="2" filter="url(#s)"/><text x="180.0" y="231" text-anchor="middle" class="t">GitHub Repository</text><text x="180.0" y="259" text-anchor="middle" class="p">infra/terraform</text><text x="180.0" y="284" text-anchor="middle" class="p">변수 · 모듈 · 정책</text><text x="180.0" y="309" text-anchor="middle" class="p">Secret 값 제외</text>
+<rect x="365" y="195" width="245" height="530" rx="18" fill="#eef4ff" stroke="#9db6ff" stroke-width="2" filter="url(#s)"/><text x="487.5" y="231" text-anchor="middle" class="t">Terraform Plan / Apply</text><text x="487.5" y="259" text-anchor="middle" class="p">변경 계획 검토</text><text x="487.5" y="284" text-anchor="middle" class="p">상태 파일 별도 관리</text><text x="487.5" y="309" text-anchor="middle" class="p">수동 콘솔 차이 탐지</text>
+<rect x="680" y="195" width="280" height="140" rx="18" fill="#eef4ff" stroke="#dbe5ff" stroke-width="2" filter="url(#s)"/><text x="820.0" y="231" text-anchor="middle" class="t">Cloud Run API</text><text x="820.0" y="259" text-anchor="middle" class="p">api runtime service account</text><text x="820.0" y="284" text-anchor="middle" class="p">Firebase Token 검증</text>
+<rect x="680" y="370" width="280" height="140" rx="18" fill="#faf5ff" stroke="#c4b5fd" stroke-width="2" filter="url(#s)"/><text x="820.0" y="406" text-anchor="middle" class="t">Cloud Run ADK</text><text x="820.0" y="434" text-anchor="middle" class="p">adk runtime service account</text><text x="820.0" y="459" text-anchor="middle" class="p">Vertex AI · MCP Invoker</text>
+<rect x="680" y="545" width="280" height="140" rx="18" fill="#ecfdf5" stroke="#86efac" stroke-width="2" filter="url(#s)"/><text x="820.0" y="581" text-anchor="middle" class="t">Cloud Run MCP / Job</text><text x="820.0" y="609" text-anchor="middle" class="p">mcp runtime · store sync job</text><text x="820.0" y="634" text-anchor="middle" class="p">Scheduler 실행 전용 권한</text>
+<rect x="1035" y="195" width="270" height="120" rx="18" fill="#f8faff" stroke="#dbe5ff" stroke-width="2" filter="url(#s)"/><text x="1170.0" y="231" text-anchor="middle" class="t">Firestore · Storage</text><text x="1170.0" y="259" text-anchor="middle" class="p">쿠폰·사용 이력</text><text x="1170.0" y="284" text-anchor="middle" class="p">공식 문서 RAG</text>
+<rect x="1035" y="345" width="270" height="120" rx="18" fill="#f8faff" stroke="#dbe5ff" stroke-width="2" filter="url(#s)"/><text x="1170.0" y="381" text-anchor="middle" class="t">Vertex Pipeline Bucket</text><text x="1170.0" y="409" text-anchor="middle" class="p">pipeline runner service account</text><text x="1170.0" y="434" text-anchor="middle" class="p">검증 artifact 보관</text>
+<rect x="1035" y="495" width="270" height="120" rx="18" fill="#f8faff" stroke="#dbe5ff" stroke-width="2" filter="url(#s)"/><text x="1170.0" y="531" text-anchor="middle" class="t">Secret Manager</text><text x="1170.0" y="559" text-anchor="middle" class="p">Data.go API · MCP Token</text><text x="1170.0" y="584" text-anchor="middle" class="p">접근 권한만 IaC 관리</text>
+<rect x="1380" y="195" width="265" height="130" rx="18" fill="#fcfaff" stroke="#eadcff" stroke-width="2" filter="url(#s)"/><text x="1512.5" y="231" text-anchor="middle" class="t">IAM 최소 권한</text><text x="1512.5" y="259" text-anchor="middle" class="p">API · ADK · MCP · Pipeline</text><text x="1512.5" y="284" text-anchor="middle" class="p">서비스 계정 분리</text>
+<rect x="1380" y="360" width="265" height="130" rx="18" fill="#fcfaff" stroke="#eadcff" stroke-width="2" filter="url(#s)"/><text x="1512.5" y="396" text-anchor="middle" class="t">API 활성화 · Budget</text><text x="1512.5" y="424" text-anchor="middle" class="p">필요한 GCP API 선언</text><text x="1512.5" y="449" text-anchor="middle" class="p">비용 경보 기준</text>
+<rect x="1380" y="525" width="265" height="130" rx="18" fill="#fcfaff" stroke="#eadcff" stroke-width="2" filter="url(#s)"/><text x="1512.5" y="561" text-anchor="middle" class="t">Secret 경계</text><text x="1512.5" y="589" text-anchor="middle" class="p">실제 비밀값은 Terraform</text><text x="1512.5" y="614" text-anchor="middle" class="p">state · 저장소에 기록 금지</text>
+<path d="M285 455 L365 455" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M610 270 L680 270" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M610 440 L680 440" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M610 615 L680 615" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M960 270 L1035 255" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M960 440 L1035 405" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M960 615 L1035 555" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M1305 255 L1380 255" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M1305 405 L1380 425" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<path d="M1305 555 L1380 585" stroke="#2747b7" stroke-width="3" marker-end="url(#a)"/>
+<text x="1025" y="790" text-anchor="middle" class="h">GCP 프로젝트</text>
+</g></svg>
