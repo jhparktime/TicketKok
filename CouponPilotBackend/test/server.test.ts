@@ -6,8 +6,9 @@ import { calculateOptions, matchingBenefitRules } from "../src/calculator.js";
 import { adkResultMatchesCalculator, shouldRunAdk } from "../src/adkClient.js";
 import { validateBenefitDocument } from "../src/benefitRag.js";
 import { assertAgentPayloadSafe, findSensitiveValue, pseudonymizeSubject, redactSensitiveText } from "../src/privacy.js";
-import { app, cardRecognitionInputIsSafe, isWithinKorea } from "../src/server.js";
+import { app, buildPersonalizationInsight, cardRecognitionInputIsSafe, isWithinKorea } from "../src/server.js";
 import { createMcpApp } from "../src/mcpServer.js";
+import { sanitizeTraceAttributes } from "../src/observability.js";
 
 const server = app.listen(0, "127.0.0.1");
 await once(server, "listening");
@@ -16,6 +17,7 @@ assert(address && typeof address !== "string");
 const baseURL = `http://127.0.0.1:${address.port}`;
 
 try {
+  assert.deepEqual(sanitizeTraceAttributes({ "couponcok.coupon_count": 2, "couponcok.ocr": "raw OCR", "couponcok.uid": "firebase-user", "couponcok.pan": "4111111111111111" }), { "couponcok.coupon_count": 2 });
   assert.equal(isWithinKorea(37.5665, 126.978), true, "Seoul coordinates must be accepted by the nationwide store boundary");
   assert.equal(isWithinKorea(33.4996, 126.5312), true, "Jeju coordinates must be accepted by the nationwide store boundary");
   assert.equal(isWithinKorea(35.6762, 139.6503), false, "non-Korean coordinates must stay outside the public-data boundary");
@@ -135,7 +137,7 @@ try {
 
   const health = await fetch(`${baseURL}/health`);
   assert.equal(health.status, 200);
-  assert.deepEqual(await health.json(), { ok: true, service: "couponcok-api" });
+  assert.deepEqual(await health.json(), { ok: true, service: "couponcok-api", observability: { cloudTrace: "disabled", adkTracing: "separate-service" } });
   assert.match(health.headers.get("x-couponcok-request-id") ?? "", /^[0-9a-f-]{36}$/u);
 
   const readiness = await fetch(`${baseURL}/ready`);
@@ -161,6 +163,41 @@ try {
   assert.equal(recommendation.recommendedOption.finalPrice, 12_000);
   assert.equal(recommendation.recommendedOption.savings, 3_000);
   assert.match(recommendation.explanation, /최종가는 12,000원이며 3,000원 절약/u);
+
+  const personalizationInsight = buildPersonalizationInsight({
+    storeId: "twosome-seoul",
+    storeName: "투썸플레이스 강남점",
+    expectedPrice: 5_100,
+    profile: { carrier: "없음" },
+    coupons: [
+      { id: "best", brand: "투썸플레이스", title: "2,000원 할인", discountType: "fixedAmount", discountValue: 2_000, minimumOrderAmount: 0, combinableWithCard: false, expiresAt: "2026-09-30T00:00:00.000Z" },
+      { id: "urgent", brand: "파리바게뜨", title: "20% 할인", discountType: "percentage", discountValue: 20, minimumOrderAmount: 0, combinableWithCard: false, expiresAt: "2026-08-30T00:00:00.000Z" }
+    ],
+    personalization: {
+      enabled: true,
+      historyWindowDays: 180,
+      totalCouponUses: 4,
+      brandSignals: [{ brand: "투썸플레이스", usageCount: 4, daysSinceLastUse: 12, averageIntervalDays: 10 }]
+    }
+  }, "best", new Date("2026-08-24T00:00:00.000Z"));
+  assert.match(personalizationInsight ?? "", /4회 사용/u);
+  assert.match(personalizationInsight ?? "", /6일 안에 만료/u);
+  assert.match(personalizationInsight ?? "", /금액·순위를 변경하지 않습니다/u);
+
+  const rawPurchaseHistory = await fetch(`${baseURL}/v1/recommendations`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      storeId: "twosome-seoul", storeName: "투썸플레이스 강남점", expectedPrice: 5_100,
+      profile: { carrier: "없음" },
+      coupons: [{ id: "best", brand: "투썸플레이스", title: "2,000원 할인", discountType: "fixedAmount", discountValue: 2_000, minimumOrderAmount: 0, combinableWithCard: false }],
+      personalization: {
+        enabled: true, historyWindowDays: 180, totalCouponUses: 1, brandSignals: [],
+        purchaseEvents: [{ storeName: "민감한 원본", paidAmount: 5_100, usedAt: "2026-08-24T10:00:00Z" }]
+      }
+    })
+  });
+  assert.equal(rawPurchaseHistory.status, 400, "raw purchase events must never enter the Agent request contract");
 
   const percentageCap = calculateOptions({
     storeId: "paris-suwon", storeName: "파리바게뜨 수원점", expectedPrice: 30_000,

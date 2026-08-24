@@ -1,0 +1,11 @@
+{
+  "Simulator Target Bundle": "com.couponpilot.app",
+  "aps": {
+    "alert": {
+      "title": "투썸플레이스 수원시청점에 도착했어요",
+      "body": "쿠폰 2장을 비교했어요 · 최대 2,000원 절약"
+    },
+    "sound": "default"
+  },
+  "storeId": "submission-twosome-suwon-cityhall"
+}

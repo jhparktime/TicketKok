@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1120" viewBox="0 0 1800 1120">
+  <defs>
+    <style>
+      .title { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; font-size: 38px; font-weight: 800; fill: #12233f; }
+      .subtitle { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; font-size: 19px; fill: #5d6f86; }
+      .box { fill: #ffffff; stroke: #7798c8; stroke-width: 2; }
+      .header { fill: #d9e9fb; stroke: #7798c8; stroke-width: 2; }
+      .secureBox { fill: #f4fcfa; stroke: #27a98d; stroke-width: 2; stroke-dasharray: 7 5; }
+      .secureHeader { fill: #d7f6ec; stroke: #27a98d; stroke-width: 2; }
+      .entity { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; font-size: 23px; font-weight: 800; fill: #12233f; text-anchor: middle; }
+      .field { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; font-size: 17px; fill: #2c3d57; }
+      .key { font-weight: 800; fill: #116f7b; }
+      .note { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; font-size: 15px; fill: #087e6b; }
+      .rel { stroke: #657d9e; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .localRel { stroke: #27a98d; stroke-width: 2; fill: none; stroke-dasharray: 7 5; marker-end: url(#arrowGreen); }
+      .label { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; font-size: 15px; fill: #42607f; font-weight: 700; }
+      .pill { fill: #eaf1fb; }
+    </style>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 z" fill="#657d9e"/></marker>
+    <marker id="arrowGreen" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 z" fill="#27a98d"/></marker>
+  </defs>
+  <rect width="1800" height="1120" fill="#ffffff"/>
+  <text x="80" y="75" class="title">쿠폰콕 데이터 모델 (ERD)</text>
+  <text x="80" y="108" class="subtitle">Firestore 사용자·쿠폰·매장 데이터와 Cloud Storage 기반 혜택 RAG, iPhone Keychain의 바코드 분리 저장 구조</text>
+
+  <!-- Relationships behind nodes -->
+  <path class="rel" d="M380 275 H460"/>
+  <text x="397" y="258" class="label">owns 1:N</text>
+  <path class="rel" d="M710 398 V548"/>
+  <text x="722" y="482" class="label">candidate 1:N</text>
+  <path class="rel" d="M410 365 C460 430 500 495 560 548"/>
+  <text x="420" y="450" class="label">receives 1:N</text>
+  <path class="rel" d="M1150 398 V548"/>
+  <text x="1162" y="482" class="label">triggers 1:N</text>
+  <path class="rel" d="M690 398 C760 445 835 490 925 548"/>
+  <text x="765" y="450" class="label">records 1:N</text>
+  <path class="rel" d="M1150 398 V548"/>
+  <path class="rel" d="M705 398 C800 505 920 535 1020 548"/>
+  <text x="820" y="525" class="label">used_at 1:N</text>
+  <path class="rel" d="M390 860 H535"/>
+  <text x="430" y="842" class="label">split_into 1:N</text>
+  <path class="localRel" d="M710 398 C820 720 1120 750 1270 820"/>
+  <text x="930" y="694" class="label" fill="#087e6b">device-local 1:1</text>
+
+  <!-- UserProfile -->
+  <rect x="120" y="170" width="290" height="205" rx="22" class="box"/>
+  <rect x="150" y="145" width="230" height="50" rx="10" class="header"/>
+  <text x="265" y="178" class="entity">UserProfile</text>
+  <text x="155" y="230" class="field"><tspan class="key">PK</tspan> userId</text>
+  <text x="155" y="260" class="field">carrier</text>
+  <text x="155" y="290" class="field">membershipGrade</text>
+  <text x="155" y="320" class="field">monthlyBenefitUsed</text>
+  <text x="155" y="350" class="field">updatedAt</text>
+
+  <!-- Coupon -->
+  <rect x="490" y="170" width="310" height="245" rx="22" class="box"/>
+  <rect x="520" y="145" width="250" height="50" rx="10" class="header"/>
+  <text x="645" y="178" class="entity">Coupon</text>
+  <text x="525" y="230" class="field"><tspan class="key">PK</tspan> couponId</text>
+  <text x="525" y="258" class="field"><tspan class="key">FK</tspan> userId</text>
+  <text x="525" y="286" class="field">brand / title</text>
+  <text x="525" y="314" class="field">discountType / discountValue</text>
+  <text x="525" y="342" class="field">maximumDiscount / minimumOrderAmount</text>
+  <text x="525" y="370" class="field">expiresAt / combinableWithCard</text>
+  <text x="525" y="398" class="field">status / createdAt / updatedAt</text>
+
+  <!-- Store -->
+  <rect x="1010" y="170" width="300" height="230" rx="22" class="box"/>
+  <rect x="1040" y="145" width="240" height="50" rx="10" class="header"/>
+  <text x="1160" y="178" class="entity">Store</text>
+  <text x="1045" y="230" class="field"><tspan class="key">PK</tspan> storeId</text>
+  <text x="1045" y="258" class="field">sourceRecordId / source</text>
+  <text x="1045" y="286" class="field">name / brand / address</text>
+  <text x="1045" y="314" class="field">latitude / longitude</text>
+  <text x="1045" y="342" class="field">businessStatus</text>
+  <text x="1045" y="370" class="field">updatedAt</text>
+
+  <!-- Recommendation log -->
+  <rect x="490" y="570" width="310" height="205" rx="22" class="box"/>
+  <rect x="520" y="545" width="250" height="50" rx="10" class="header"/>
+  <text x="645" y="578" class="entity">RecommendationLog</text>
+  <text x="525" y="630" class="field"><tspan class="key">PK</tspan> recommendationId</text>
+  <text x="525" y="658" class="field"><tspan class="key">FK</tspan> userId / storeId / couponId</text>
+  <text x="525" y="686" class="field">expectedPrice / calculatedSavings</text>
+  <text x="525" y="714" class="field">recommendedOption</text>
+  <text x="525" y="742" class="field">createdAt</text>
+
+  <!-- Coupon usage -->
+  <rect x="1010" y="570" width="300" height="205" rx="22" class="box"/>
+  <rect x="1040" y="545" width="240" height="50" rx="10" class="header"/>
+  <text x="1160" y="578" class="entity">CouponUsage</text>
+  <text x="1045" y="630" class="field"><tspan class="key">PK</tspan> usageId</text>
+  <text x="1045" y="658" class="field"><tspan class="key">FK</tspan> couponId / userId / storeId</text>
+  <text x="1045" y="686" class="field">usedAt</text>
+  <text x="1045" y="714" class="field">finalPrice / savings</text>
+
+  <!-- Benefit document -->
+  <rect x="120" y="830" width="270" height="175" rx="22" class="box"/>
+  <rect x="145" y="805" width="220" height="50" rx="10" class="header"/>
+  <text x="255" y="838" class="entity">BenefitDocument</text>
+  <text x="155" y="890" class="field"><tspan class="key">PK</tspan> documentId</text>
+  <text x="155" y="918" class="field">provider / sourceURL</text>
+  <text x="155" y="946" class="field">collectedAt / updatedAt</text>
+  <text x="155" y="974" class="field">status / version</text>
+
+  <!-- Benefit chunk -->
+  <rect x="555" y="830" width="310" height="175" rx="22" class="box"/>
+  <rect x="585" y="805" width="250" height="50" rx="10" class="header"/>
+  <text x="710" y="838" class="entity">BenefitChunk</text>
+  <text x="590" y="890" class="field"><tspan class="key">PK</tspan> chunkId</text>
+  <text x="590" y="918" class="field"><tspan class="key">FK</tspan> documentId</text>
+  <text x="590" y="946" class="field">text / embeddingRef</text>
+  <text x="590" y="974" class="field">brand / carrier / validityStatus</text>
+
+  <!-- Local barcode store -->
+  <rect x="1220" y="820" width="430" height="205" rx="22" class="secureBox"/>
+  <rect x="1250" y="795" width="370" height="50" rx="10" class="secureHeader"/>
+  <text x="1435" y="828" class="entity">SecureCouponBarcodeStore</text>
+  <text x="1255" y="876" class="note">iPhone Keychain · 기기 전용</text>
+  <text x="1255" y="910" class="field"><tspan class="key">PK</tspan> couponId</text>
+  <text x="1255" y="940" class="field">encryptedBarcodePayload</text>
+  <text x="1255" y="970" class="field">savedAt</text>
+  <text x="1255" y="1004" class="note">※ Firestore · Cloud Run · Gemini 전송 금지</text>
+
+  <rect x="1330" y="165" width="360" height="88" rx="16" class="pill"/>
+  <text x="1360" y="202" class="field" style="font-weight:700">개인정보 저장 경계</text>
+  <text x="1360" y="230" class="field">쿠폰 이미지·바코드 원문은 iPhone에만 보관</text>
+</svg>

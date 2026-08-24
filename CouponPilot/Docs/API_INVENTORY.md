@@ -70,6 +70,6 @@ Cloud DLP는 OCR 자유 텍스트에서 `EMAIL_ADDRESS`, `PHONE_NUMBER`, `CREDIT
 | POST | `/mcp` (`verify_store_with_external_maps`) | ADK | Google Maps 공식 MCP 보조 검증, 카카오 공식 REST fallback | 0.01도 격자 좌표만 전송, 할인·지오펜스 결정 불가 |
 | POST | `/mcp` (`retrieve_carrier_benefits`) | ADK | 통신사·카드 공식 근거 조회 | 내부 MCP 토큰, active 문서만 |
 | POST | `/mcp` (`calculate_best_discount`) | ADK | 최종가·절약액 결정론 계산 | 내부 MCP 토큰, 상태 변경 없음 |
-| POST | ADK `/v1/orchestrate` | Backend | 4개 Agent 순차 오케스트레이션 | 내부 ADK 토큰, 원문 OCR·UID 스키마 차단 |
+| POST | ADK `/v1/orchestrate` | Backend | 5개 Agent 순차 오케스트레이션 | 내부 ADK 토큰, 원문 OCR·UID·원본 구매 이력 스키마 차단 |
 
 외부 API 키는 iOS·Git에 두지 않고 Secret Manager 또는 런타임 Workload Identity/서비스 계정으로만 접근한다. API Gateway는 사용자 API의 경계이며, MCP·ADK는 공개 인터넷 호출자가 아닌 Cloud Run 내부 서비스 간 경계로 유지한다.

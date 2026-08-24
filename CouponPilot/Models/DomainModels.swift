@@ -277,22 +277,32 @@ struct UsedCoupon: Identifiable, Codable, Hashable {
     let barcodeLast4: String
     let usedAt: Date
     let source: String
+    /// 사용자가 결제 완료를 확인한 경우에만 저장하는 최소 구매 요약입니다.
+    /// 영수증·카드번호·정확한 결제내역은 수집하지 않습니다.
+    let storeName: String?
+    let paidAmount: Int?
+    let savings: Int?
     let imageResourceName: String?
     let localImageFilename: String?
     /// 사용 완료를 되돌릴 때 할인 조건까지 그대로 복원하기 위한 원본입니다.
     /// 과거 버전에서 저장된 기록에는 값이 없을 수 있으므로 optional로 유지합니다.
     let originalCoupon: Coupon?
 
-    init(id: String, brand: String, productName: String, expiresAt: Date, orderNumber: String, barcodeLast4: String, usedAt: Date, source: String, imageResourceName: String? = nil, localImageFilename: String? = nil, originalCoupon: Coupon? = nil) {
+    init(id: String, brand: String, productName: String, expiresAt: Date, orderNumber: String, barcodeLast4: String, usedAt: Date, source: String, storeName: String? = nil, paidAmount: Int? = nil, savings: Int? = nil, imageResourceName: String? = nil, localImageFilename: String? = nil, originalCoupon: Coupon? = nil) {
         self.id = id; self.brand = brand; self.productName = productName; self.expiresAt = expiresAt
         self.orderNumber = orderNumber; self.barcodeLast4 = barcodeLast4; self.usedAt = usedAt; self.source = source
+        self.storeName = storeName; self.paidAmount = paidAmount; self.savings = savings
         self.imageResourceName = imageResourceName; self.localImageFilename = localImageFilename
         self.originalCoupon = originalCoupon
     }
 
-    init(coupon: Coupon) {
+    init(coupon: Coupon, recommendation: Recommendation? = nil) {
+        let matchedOption = recommendation?.recommendedOption.id == coupon.id ? recommendation?.recommendedOption : nil
         self.init(id: coupon.id, brand: coupon.brand, productName: coupon.title, expiresAt: coupon.expiresAt,
                   orderNumber: "앱에서 사용 처리", barcodeLast4: "-", usedAt: .now, source: "CouponPilot",
+                  storeName: matchedOption == nil ? nil : recommendation?.storeName,
+                  paidAmount: matchedOption?.finalPrice,
+                  savings: matchedOption?.savings,
                   localImageFilename: coupon.localImageFilename, originalCoupon: coupon)
     }
 
@@ -315,6 +325,57 @@ struct UsedCoupon: Identifiable, Codable, Hashable {
 
     private static func date(_ value: String) -> Date {
         DateFormatter.yyyyMMdd.date(from: value) ?? .now
+    }
+}
+
+/// Agent에는 원본 구매 이력 대신 이 비식별 집계만 전달합니다.
+/// 정확한 사용 시각·매장·상품명·결제금액은 포함하지 않습니다.
+struct BrandUsageSignal: Codable, Equatable, Hashable {
+    let brand: String
+    let usageCount: Int
+    let daysSinceLastUse: Int
+    let averageIntervalDays: Int?
+}
+
+struct PersonalizationContext: Codable, Equatable, Hashable {
+    let enabled: Bool
+    let historyWindowDays: Int
+    let totalCouponUses: Int
+    let brandSignals: [BrandUsageSignal]
+
+    static func make(from history: [UsedCoupon], enabled: Bool, now: Date = .now) -> PersonalizationContext? {
+        guard enabled else { return nil }
+        let windowDays = 180
+        let calendar = Calendar(identifier: .gregorian)
+        let cutoff = calendar.date(byAdding: .day, value: -windowDays, to: now) ?? .distantPast
+        let recent = history.filter { $0.usedAt >= cutoff && $0.usedAt <= now }
+        let grouped = Dictionary(grouping: recent, by: \UsedCoupon.brand)
+        let signals = grouped.map { brand, records -> BrandUsageSignal in
+            let dates = records.map(\.usedAt).sorted()
+            let intervals = zip(dates, dates.dropFirst()).compactMap { earlier, later in
+                calendar.dateComponents([.day], from: earlier, to: later).day
+            }.filter { $0 >= 0 }
+            let average = intervals.isEmpty ? nil : Int(round(Double(intervals.reduce(0, +)) / Double(intervals.count)))
+            let lastUsedAt = dates.last ?? now
+            let daysSinceLastUse = max(0, calendar.dateComponents([.day], from: lastUsedAt, to: now).day ?? 0)
+            return BrandUsageSignal(
+                brand: brand,
+                usageCount: records.count,
+                daysSinceLastUse: daysSinceLastUse,
+                averageIntervalDays: average
+            )
+        }
+        .sorted {
+            if $0.usageCount == $1.usageCount { return $0.brand < $1.brand }
+            return $0.usageCount > $1.usageCount
+        }
+        .prefix(12)
+        return PersonalizationContext(
+            enabled: true,
+            historyWindowDays: windowDays,
+            totalCouponUses: recent.count,
+            brandSignals: Array(signals)
+        )
     }
 }
 
@@ -419,7 +480,7 @@ struct UserProfile: Codable, Equatable {
 }
 
 struct PrivacyConsent: Codable, Equatable {
-    static let currentPolicyVersion = "privacy-2026-08-20.v1"
+    static let currentPolicyVersion = "privacy-2026-08-24.v2"
 
     let policyVersion: String
     let requiredProcessingAccepted: Bool
@@ -456,6 +517,17 @@ struct Recommendation: Codable, Hashable {
     let alternatives: [PriceOption]
     let explanation: String
     let benefitSources: [BenefitSource]
+    let personalizationInsight: String?
+
+    init(storeName: String, originalPrice: Int, recommendedOption: PriceOption, alternatives: [PriceOption], explanation: String, benefitSources: [BenefitSource], personalizationInsight: String? = nil) {
+        self.storeName = storeName
+        self.originalPrice = originalPrice
+        self.recommendedOption = recommendedOption
+        self.alternatives = alternatives
+        self.explanation = explanation
+        self.benefitSources = benefitSources
+        self.personalizationInsight = personalizationInsight
+    }
 
     static func submissionPreview(for store: Store) -> Recommendation {
         Recommendation(

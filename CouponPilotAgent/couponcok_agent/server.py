@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .agent import build_root_agent, root_agent
 from .model_armor import enforce_model_armor
+from .prompt_versions import PROMPT_METADATA
 
 APP_NAME = "couponcok_agent"
 api = FastAPI(title="CouponCock ADK Orchestrator", version="1.0.0")
@@ -32,6 +33,7 @@ class CouponPayload(StrictPayload):
     discount_value: int = Field(alias="discountValue", ge=0, le=1_000_000)
     minimum_order_amount: int = Field(alias="minimumOrderAmount", ge=0, le=1_000_000)
     maximum_discount: int | None = Field(default=None, alias="maximumDiscount", ge=0, le=1_000_000)
+    expires_at: str | None = Field(default=None, alias="expiresAt", max_length=40)
     combinable_with_card: bool = Field(alias="combinableWithCard")
     reference_price: int | None = Field(default=None, alias="referencePrice", ge=1, le=1_000_000)
 
@@ -61,12 +63,27 @@ class CardPayload(StrictPayload):
 ProfilePayload.model_rebuild()
 
 
+class BrandUsageSignalPayload(StrictPayload):
+    brand: str = Field(min_length=1, max_length=100)
+    usage_count: int = Field(alias="usageCount", ge=1, le=10_000)
+    days_since_last_use: int = Field(alias="daysSinceLastUse", ge=0, le=365)
+    average_interval_days: int | None = Field(default=None, alias="averageIntervalDays", ge=0, le=365)
+
+
+class PersonalizationPayload(StrictPayload):
+    enabled: Literal[True]
+    history_window_days: int = Field(alias="historyWindowDays", ge=1, le=365)
+    total_coupon_uses: int = Field(alias="totalCouponUses", ge=0, le=10_000)
+    brand_signals: list[BrandUsageSignalPayload] = Field(alias="brandSignals", max_length=12)
+
+
 class RecommendationPayload(StrictPayload):
     store_id: str = Field(alias="storeId", min_length=1, max_length=150)
     store_name: str | None = Field(default=None, alias="storeName", max_length=150)
     expected_price: int = Field(alias="expectedPrice", ge=1, le=1_000_000)
     profile: ProfilePayload
     coupons: list[CouponPayload] = Field(min_length=1, max_length=100)
+    personalization: PersonalizationPayload | None = None
 
 
 class OrchestrationRequest(StrictPayload):
@@ -87,6 +104,7 @@ async def health() -> dict:
         "ok": True,
         "service": "couponcok-adk",
         "workflow": [agent.name for agent in root_agent.sub_agents],
+        "promptVersions": PROMPT_METADATA,
     }
 
 
@@ -137,4 +155,4 @@ async def orchestrate(
         await enforce_model_armor(final_text, "response")
     except RuntimeError as error:
         raise HTTPException(status_code=502, detail="Recommendation response blocked by safety policy") from error
-    return {"requestId": request.request_id, "resultText": final_text}
+    return {"requestId": request.request_id, "resultText": final_text, "promptVersions": PROMPT_METADATA}

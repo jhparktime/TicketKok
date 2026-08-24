@@ -86,6 +86,9 @@ final class FirestoreRepository {
             "usedAt": Timestamp(date: usedCoupon.usedAt),
             "source": usedCoupon.source
         ]
+        if let storeName = usedCoupon.storeName { data["storeName"] = storeName }
+        if let paidAmount = usedCoupon.paidAmount { data["paidAmount"] = paidAmount }
+        if let savings = usedCoupon.savings { data["savings"] = savings }
         if let originalCoupon = usedCoupon.originalCoupon {
             data["originalCoupon"] = couponData(originalCoupon)
         }
@@ -162,6 +165,9 @@ final class FirestoreRepository {
             barcodeLast4: "-",
             usedAt: usedAt,
             source: data["source"] as? String ?? "CouponPilot",
+            storeName: data["storeName"] as? String,
+            paidAmount: data["paidAmount"] as? Int,
+            savings: data["savings"] as? Int,
             originalCoupon: originalCoupon
         )
     }

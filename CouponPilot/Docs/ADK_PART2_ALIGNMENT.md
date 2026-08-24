@@ -8,7 +8,7 @@
 
 | 교재 기술 | 쿠폰콕 적용 | 판단과 구현 |
 |---|---|---|
-| ADK 멀티 에이전트 | 적용 | 매장 맥락 → 쿠폰 검증 → 공식 혜택 RAG → 추천 설명의 `SequentialAgent` 4단계 |
+| ADK 멀티 에이전트 | 적용 | 매장 맥락 → 쿠폰 검증 → 공식 혜택 RAG → 사용 이력 집계 개인화 → 추천 설명의 `SequentialAgent` 5단계 |
 | 워크플로 Agent | 적용 | 할인 계산은 순서 의존성이 있어 Parallel/Loop보다 순차 실행이 적합 |
 | ADK Callback | 적용 | `before_tool_callback`에서 수원 범위, 통신사, 금액, 쿠폰 수, 민감 필드를 검사 |
 | MCP | 적용 | 매장 검색, 통신사 혜택 검색, 최종가 계산을 Streamable HTTP 도구로 분리 |

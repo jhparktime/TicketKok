@@ -864,7 +864,7 @@ struct ContentView: View {
                         if !accepted { locationMonitor.stopMonitoring() }
                     }
                 ))
-                Text("선택 동의이며 언제든 철회할 수 있어요. 위치 이력은 서버에 저장하지 않고, 카드번호·CVC·거래내역은 수집하지 않습니다.")
+                Text("선택 동의이며 언제든 철회할 수 있어요. 개인화 Agent에는 최근 쿠폰 사용 횟수·간격의 집계만 전달합니다. 위치 이력, 카드번호·CVC·카드사 거래내역은 수집하지 않습니다.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -1033,7 +1033,13 @@ struct ContentView: View {
         let price = Int(expectedPrice) ?? 15_000
         do {
             let recommendationProfile = appState.privacyConsent.personalizationAccepted ? appState.profile : .empty
-            let recommendation = try await AgentAPIService().fetchRecommendation(for: store, expectedPrice: price, profile: recommendationProfile, coupons: matchingCoupons)
+            let recommendation = try await AgentAPIService().fetchRecommendation(
+                for: store,
+                expectedPrice: price,
+                profile: recommendationProfile,
+                coupons: matchingCoupons,
+                personalization: appState.recommendationPersonalizationContext
+            )
             appState.cacheRecommendation(recommendation, store: store)
             appState.shouldShowRecommendation = true
             return recommendation
@@ -1366,7 +1372,7 @@ private struct PrivacyConsentView: View {
                     )
                     consentCard(
                         title: "쿠폰·멤버십 초개인화",
-                        detail: "보유 쿠폰, 통신사·등급, 카드 상품명, 사용 여부를 이용해 현재 상황의 혜택 후보를 좁힙니다. 카드번호와 거래내역은 수집하지 않습니다.",
+                        detail: "보유 쿠폰, 통신사·등급, 카드 상품명과 사용 처리한 쿠폰의 브랜드·사용 시점·확인된 최종가를 이용합니다. Agent에는 최근 180일의 브랜드별 횟수·사용 간격 집계만 전달합니다. 카드번호와 카드사 거래내역은 수집하지 않습니다.",
                         isOn: $personalizationAccepted,
                         required: false
                     )

@@ -7,6 +7,7 @@ import { assertAgentPayloadSafe, pseudonymizeSubject } from "./privacy.js";
 export type AdkOrchestrationResult = {
   requestId: string;
   resultText: string;
+  promptVersions?: Array<{ name: string; version: string; sha256: string }>;
 };
 
 export type AdkMode = "off" | "shadow" | "explanation";
@@ -70,15 +71,28 @@ export async function runAdkOrchestration(input: RecommendationInput, uid: strin
       discountValue: coupon.discountValue,
       minimumOrderAmount: coupon.minimumOrderAmount,
       maximumDiscount: coupon.maximumDiscount,
+      expiresAt: coupon.expiresAt,
       combinableWithCard: coupon.combinableWithCard,
       referencePrice: coupon.referencePrice
-    }))
+    })),
+    personalization: input.personalization ? {
+      enabled: true as const,
+      historyWindowDays: input.personalization.historyWindowDays,
+      totalCouponUses: input.personalization.totalCouponUses,
+      brandSignals: input.personalization.brandSignals.map((signal) => ({
+        brand: signal.brand,
+        usageCount: signal.usageCount,
+        daysSinceLastUse: signal.daysSinceLastUse,
+        averageIntervalDays: signal.averageIntervalDays
+      }))
+    } : undefined
   };
   assertAgentPayloadSafe(recommendation);
   return traceOperation("agent.adk_orchestration", {
     "couponcok.adk_mode": configuredAdkMode(),
     "couponcok.store": input.storeName ?? input.storeId,
-    "couponcok.coupon_count": input.coupons.length
+    "couponcok.coupon_count": input.coupons.length,
+    "couponcok.personalization_enabled": input.personalization?.enabled === true
   }, async () => {
     const client = await cloudRunClient(endpoint);
     const response = await client.request({

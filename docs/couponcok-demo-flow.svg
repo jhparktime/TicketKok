@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1120" viewBox="0 0 1800 1120">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f3fffb"/><stop offset=".55" stop-color="#eff9ff"/><stop offset="1" stop-color="#f6f3ff"/></linearGradient>
+    <linearGradient id="mint" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#06cf92"/><stop offset="1" stop-color="#48c2d5"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="15" stdDeviation="18" flood-color="#23716b" flood-opacity=".16"/></filter>
+    <clipPath id="homeClip"><rect x="72" y="377" width="250" height="372" rx="26"/></clipPath>
+    <clipPath id="recommendClip"><rect x="778" y="377" width="250" height="372" rx="26"/></clipPath>
+    <clipPath id="detailClip"><rect x="1480" y="377" width="250" height="372" rx="26"/></clipPath>
+    <style>
+      .kr{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;fill:#1e2b33}.muted{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;fill:#6d7c84}.label{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;fill:#088c6a;font-weight:800;letter-spacing:1.3px}.num{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;fill:#fff;font-weight:800}.card{fill:#fff;stroke:#e1f0ec;stroke-width:2}.line{stroke:#53c7aa;stroke-width:5;stroke-linecap:round}.arrow{fill:#53c7aa}.tiny{font-size:20px}.body{font-size:25px}.title{font-size:31px;font-weight:800}.main{font-size:54px;font-weight:800}
+    </style>
+  </defs>
+  <rect width="1800" height="1120" fill="url(#bg)"/>
+  <circle cx="148" cy="94" r="170" fill="#c9f5e9" opacity=".45"/><circle cx="1635" cy="150" r="220" fill="#d5e6ff" opacity=".5"/><circle cx="900" cy="1070" r="250" fill="#d9f9ef" opacity=".32"/>
+  <text x="92" y="120" class="label" font-size="20">COUPONKOK · DEMO SCENARIO</text>
+  <text x="92" y="185" class="kr main">매장 진입부터 사용 확인까지</text>
+  <text x="92" y="232" class="muted body">추천은 근거를 연결하고, 최종 선택과 사용 처리는 사용자가 직접 수행한다.</text>
+
+  <path d="M390 560 H492 M1100 560 H1202" class="line"/><path d="M492 560 l-19 -13 v26z M1202 560 l-19 -13 v26z" class="arrow"/>
+
+  <g filter="url(#shadow)"><rect x="52" y="322" width="290" height="494" rx="34" class="card"/><rect x="72" y="377" width="250" height="372" rx="26" fill="#111921"/><image href="demo-screenshots/01-home-submission.png" x="72" y="377" width="250" height="544" preserveAspectRatio="xMidYMin slice" clip-path="url(#homeClip)"/><circle cx="101" cy="355" r="22" fill="url(#mint)"/><text x="94" y="363" class="num" font-size="20">1</text><text x="135" y="363" class="label" font-size="16">시연 준비</text><text x="76" y="785" class="kr title">쿠폰·동의 상태 확인</text><text x="76" y="813" class="muted tiny">등록 쿠폰과 위치·알림 권한을 준비한다.</text></g>
+
+  <g filter="url(#shadow)"><rect x="410" y="446" width="310" height="228" rx="34" class="card"/><circle cx="449" cy="490" r="22" fill="#dffbf1"/><text x="443" y="498" class="label" font-size="21">2</text><text x="486" y="497" class="kr title">지원 매장 진입</text><text x="444" y="542" class="muted body">Simulator 또는 실기기 위치를</text><text x="444" y="576" class="muted body">주변 지원 매장 좌표로 변경한다.</text><rect x="444" y="610" width="212" height="36" rx="18" fill="#e6fff5"/><text x="466" y="635" class="label" font-size="16">Core Location · MapKit</text></g>
+
+  <g filter="url(#shadow)"><rect x="758" y="322" width="290" height="494" rx="34" class="card"/><rect x="778" y="377" width="250" height="372" rx="26" fill="#111921"/><image href="demo-screenshots/05-recommendation-calculator.png" x="778" y="377" width="250" height="544" preserveAspectRatio="xMidYMin slice" clip-path="url(#recommendClip)"/><circle cx="807" cy="355" r="22" fill="url(#mint)"/><text x="800" y="363" class="num" font-size="20">3</text><text x="841" y="363" class="label" font-size="16">알림 · 추천</text><text x="782" y="785" class="kr title">Calculator가 최종가 확정</text><text x="782" y="813" class="muted tiny">공식 근거를 찾고, AI는 설명만 생성한다.</text></g>
+
+  <g filter="url(#shadow)"><rect x="1120" y="446" width="310" height="228" rx="34" class="card"/><circle cx="1159" cy="490" r="22" fill="#e8e4ff"/><text x="1153" y="498" class="label" font-size="21">4</text><text x="1196" y="497" class="kr title">Human-in-the-Loop</text><text x="1154" y="542" class="muted body">사용자는 추천 근거와 조건을</text><text x="1154" y="576" class="muted body">확인한 뒤 쿠폰 열기를 선택한다.</text><rect x="1154" y="610" width="215" height="36" rx="18" fill="#eeecff"/><text x="1175" y="635" class="label" font-size="16">자동 결제 · 자동 사용 없음</text></g>
+
+  <g filter="url(#shadow)"><rect x="1460" y="322" width="290" height="494" rx="34" class="card"/><rect x="1480" y="377" width="250" height="372" rx="26" fill="#111921"/><image href="demo-screenshots/06-coupon-detail-hitl.png" x="1480" y="377" width="250" height="544" preserveAspectRatio="xMidYMin slice" clip-path="url(#detailClip)"/><circle cx="1509" cy="355" r="22" fill="url(#mint)"/><text x="1502" y="363" class="num" font-size="20">5</text><text x="1543" y="363" class="label" font-size="16">사용 처리</text><text x="1484" y="785" class="kr title">결제 후 직접 확인</text><text x="1484" y="813" class="muted tiny">5초 Undo와 기록 복원 흐름을 제공한다.</text></g>
+
+  <rect x="92" y="902" width="1616" height="132" rx="28" fill="#163f3b" filter="url(#shadow)"/>
+  <text x="138" y="950" fill="#94f4cf" class="label" font-size="17">FAIL-SAFE</text>
+  <text x="138" y="986" style="fill:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif" font-size="26" font-weight="700">공식 혜택 문서·외부 API·AI 설명이 실패하면 할인 금액을 추정하지 않는다.</text>
+  <text x="138" y="1020" style="fill:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif" font-size="26" font-weight="700">쿠폰 단독 Calculator 결과 또는 ‘공식 확인 필요’ 안내로 안전하게 전환한다.</text>
+</svg>

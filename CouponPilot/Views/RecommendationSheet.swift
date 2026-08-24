@@ -26,6 +26,7 @@ struct RecommendationSheet: View {
                         .accessibilityHint("쿠폰 이미지와 사용 조건을 확인합니다")
                     }
                     aiExplanation
+                    personalizationSection
                     sourceSection
                     alternatives
                 }
@@ -127,6 +128,25 @@ struct RecommendationSheet: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
+        }
+    }
+
+    @ViewBuilder
+    private var personalizationSection: some View {
+        if let insight = recommendation.personalizationInsight, !insight.isEmpty {
+            RecommendationGlassSurface(tint: accent) {
+                Label("내 사용 패턴 참고", systemImage: "chart.line.uptrend.xyaxis")
+                    .font(.headline)
+                    .foregroundStyle(AppPalette.ink)
+                Text(insight)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary.opacity(0.76))
+                    .fixedSize(horizontal: false, vertical: true)
+                Label("개인화 동의 시 최근 쿠폰 사용 이력의 집계만 사용하며, 가격·순위는 바꾸지 않아요.", systemImage: "person.crop.circle.badge.checkmark")
+                    .font(.caption)
+                    .foregroundStyle(AppPalette.accent)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

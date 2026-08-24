@@ -9,13 +9,15 @@ struct RecommendationRequest: Codable {
     let expectedPrice: Int
     let profile: UserProfile
     let coupons: [RecommendationCouponPayload]
+    let personalization: PersonalizationContext?
 
-    init(storeId: String, storeName: String, expectedPrice: Int, profile: UserProfile, coupons: [Coupon]) {
+    init(storeId: String, storeName: String, expectedPrice: Int, profile: UserProfile, coupons: [Coupon], personalization: PersonalizationContext?) {
         self.storeId = storeId
         self.storeName = storeName
         self.expectedPrice = expectedPrice
         self.profile = profile
         self.coupons = coupons.map(RecommendationCouponPayload.init)
+        self.personalization = personalization
     }
 }
 
@@ -88,7 +90,7 @@ struct AgentAPIService {
         }
     }
 
-    func fetchRecommendation(for store: Store, expectedPrice: Int, profile: UserProfile, coupons: [Coupon]) async throws -> Recommendation {
+    func fetchRecommendation(for store: Store, expectedPrice: Int, profile: UserProfile, coupons: [Coupon], personalization: PersonalizationContext?) async throws -> Recommendation {
         guard !baseURL.absoluteString.contains("REPLACE_ME") else {
             throw URLError(.badURL)
         }
@@ -97,7 +99,14 @@ struct AgentAPIService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        request.httpBody = try encoder.encode(RecommendationRequest(storeId: store.id, storeName: store.name, expectedPrice: expectedPrice, profile: profile, coupons: coupons))
+        request.httpBody = try encoder.encode(RecommendationRequest(
+            storeId: store.id,
+            storeName: store.name,
+            expectedPrice: expectedPrice,
+            profile: profile,
+            coupons: coupons,
+            personalization: personalization
+        ))
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else { throw URLError(.badServerResponse) }

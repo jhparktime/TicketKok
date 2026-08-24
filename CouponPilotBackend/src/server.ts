@@ -15,7 +15,7 @@ import {
   matchingBenefitRules,
   type RecommendationInput
 } from "./calculator.js";
-import { initializeObservability, recordAIUsage, requestCorrelationID, traceHttpRequest, traceOperation } from "./observability.js";
+import { initializeObservability, observabilityStatus, recordAIUsage, requestCorrelationID, traceHttpRequest, traceOperation } from "./observability.js";
 import { adkResultMatchesCalculator, configuredAdkMode, runAdkOrchestration, shouldRunAdk } from "./adkClient.js";
 import { findSensitiveValue, redactSensitiveText } from "./privacy.js";
 import { checkModelArmorText, configuredDlpMode, configuredModelArmorMode, deidentifyTextForModel, redactCardVisualSignatureForModel } from "./cloudSafety.js";
@@ -80,6 +80,18 @@ const couponRequestSchema = z.object({
   referencePrice: z.number().int().min(1).max(1_000_000).optional()
 }).strict();
 
+const personalizationContextSchema = z.object({
+  enabled: z.literal(true),
+  historyWindowDays: z.number().int().min(1).max(365),
+  totalCouponUses: z.number().int().min(0).max(10_000),
+  brandSignals: z.array(z.object({
+    brand: z.string().trim().min(1).max(100),
+    usageCount: z.number().int().min(1).max(10_000),
+    daysSinceLastUse: z.number().int().min(0).max(365),
+    averageIntervalDays: z.number().int().min(0).max(365).optional()
+  }).strict()).max(12)
+}).strict();
+
 const recommendationRequestSchema = z.object({
   storeId: z.string().min(1).max(150),
   storeName: z.string().min(1).max(150).optional(),
@@ -97,7 +109,8 @@ const recommendationRequestSchema = z.object({
       monthlyBenefitRemainingAmount: z.number().int().min(0).max(1_000_000)
     }).strict()).max(10).optional()
   }).strict(),
-  coupons: z.array(couponRequestSchema).min(1).max(100)
+  coupons: z.array(couponRequestSchema).min(1).max(100),
+  personalization: personalizationContextSchema.optional()
 }).strict();
 
 /**
@@ -405,6 +418,46 @@ function safeRecommendationExplanation(option: ExplanationOption, sources: Expla
   return `${evidence} 최종가는 ${option.finalPrice.toLocaleString("ko-KR")}원이며 ${option.savings.toLocaleString("ko-KR")}원 절약됩니다.${validation}`;
 }
 
+/**
+ * Produce a consent-gated personalization note without letting an LLM alter money or rank.
+ * Only aggregate usage counts/intervals and coupon expiry dates are used. Raw purchase events,
+ * exact timestamps and payment instruments are not accepted by the request schema.
+ */
+export function buildPersonalizationInsight(input: RecommendationInput, recommendedOptionID: string, now = new Date()) {
+  const context = input.personalization;
+  if (!context?.enabled || context.totalCouponUses === 0) return undefined;
+
+  const recommendedCoupon = input.coupons.find((coupon) => coupon.id === recommendedOptionID);
+  const signal = recommendedCoupon
+    ? context.brandSignals.find((candidate) => normalizedText(candidate.brand) === normalizedText(recommendedCoupon.brand))
+    : undefined;
+  const parts: string[] = [];
+  if (signal) {
+    const interval = signal.averageIntervalDays === undefined
+      ? "아직 평균 방문 주기를 계산하기에는 기록이 부족합니다."
+      : `평균 사용 간격은 약 ${signal.averageIntervalDays}일이고 마지막 사용 후 ${signal.daysSinceLastUse}일이 지났습니다.`;
+    parts.push(`최근 ${context.historyWindowDays}일 동안 ${signal.brand} 쿠폰을 ${signal.usageCount}회 사용했습니다. ${interval}`);
+  }
+
+  const expiringAlternative = input.coupons
+    .filter((coupon) => coupon.id !== recommendedOptionID && coupon.expiresAt && couponIsActive(coupon, now))
+    .map((coupon) => ({
+      coupon,
+      days: Math.max(0, Math.ceil((new Date(coupon.expiresAt!).getTime() - now.getTime()) / 86_400_000))
+    }))
+    .filter(({ days }) => days <= 14)
+    .sort((left, right) => left.days - right.days)[0];
+  if (expiringAlternative) {
+    parts.push(`${expiringAlternative.coupon.brand}의 '${expiringAlternative.coupon.title}'은 ${expiringAlternative.days}일 안에 만료되므로 다음 방문 전에 먼저 확인할 가치가 있습니다.`);
+  }
+
+  return parts.length ? `${parts.join(" ")} 이 정보는 선택을 돕는 참고 근거이며 Calculator의 금액·순위를 변경하지 않습니다.` : undefined;
+}
+
+function normalizedText(value: string) {
+  return value.toLocaleLowerCase("ko-KR").replace(/[^\p{L}\p{N}]/gu, "");
+}
+
 async function geminiClient(): Promise<any> {
   const project = process.env.VERTEX_PROJECT_ID;
   if (!project) throw new Error("VERTEX_PROJECT_ID is not configured");
@@ -691,7 +744,7 @@ export async function fetchLiveNearbyKoreanStores(lat: number, lon: number, radi
 /** Backward-compatible name used by the existing Suwon scheduler job. */
 export const fetchLiveNearbySuwonStores = fetchLiveNearbyKoreanStores;
 
-app.get("/health", (_req, res) => res.json({ ok: true, service: "couponcok-api" }));
+app.get("/health", (_req, res) => res.json({ ok: true, service: "couponcok-api", observability: observabilityStatus() }));
 
 /**
  * Liveness stays independent of optional AI components. Candidate deployment checks this route
@@ -709,7 +762,7 @@ app.get("/ready", (_req, res) => {
     modelArmor: configuredModelArmorMode() !== "enforce" || Boolean(process.env.MODEL_ARMOR_TEMPLATE)
   };
   const ready = Object.values(checks).every(Boolean);
-  res.status(ready ? 200 : 503).json({ ok: ready, service: "couponcok-api", adkMode, checks });
+  res.status(ready ? 200 : 503).json({ ok: ready, service: "couponcok-api", adkMode, checks, observability: observabilityStatus() });
 });
 
 app.get("/v1/stores/nearby", async (req, res) => {
@@ -832,8 +885,9 @@ app.post("/v1/recommendations", async (req: AuthenticatedRequest, res) => {
     license: chunk.license
   }));
   let explanation = await createRecommendationExplanation({ storeName, option: recommendedOption, benefitSources });
+  const personalizationInsight = buildPersonalizationInsight(matchedInput, recommendedOption.id);
   const adkMode = configuredAdkMode();
-  let agentRun: { mode: typeof adkMode; status: "disabled" | "sampled-out" | "completed" | "contract-rejected" | "failed" } = {
+  let agentRun: { mode: typeof adkMode; status: "disabled" | "sampled-out" | "completed" | "contract-rejected" | "failed"; promptVersions?: Array<{ name: string; version: string; sha256: string }> } = {
     mode: adkMode,
     status: "disabled"
   };
@@ -843,7 +897,7 @@ app.post("/v1/recommendations", async (req: AuthenticatedRequest, res) => {
   } else if (adkMode !== "off") {
     try {
       const adkResult = await runAdkOrchestration(matchedInput, req.firebaseUID ?? "anonymous", requestId);
-      agentRun = { mode: adkMode, status: "completed" };
+      agentRun = { mode: adkMode, status: "completed", promptVersions: adkResult.promptVersions };
       if (adkMode === "explanation") {
         if (adkResultMatchesCalculator(adkResult.resultText, recommendedOption.savings, recommendedOption.finalPrice)) {
           explanation = safeRecommendationExplanation(recommendedOption, benefitSources, true);
@@ -864,6 +918,7 @@ app.post("/v1/recommendations", async (req: AuthenticatedRequest, res) => {
     alternatives,
     explanation,
     benefitSources,
+    personalizationInsight,
     agentRun
   });
 });

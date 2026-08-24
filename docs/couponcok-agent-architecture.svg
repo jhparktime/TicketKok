@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1180" viewBox="0 0 1800 1180" role="img" aria-labelledby="title desc">
+  <title id="title">쿠폰콕 멀티 에이전트 아키텍처</title>
+  <desc id="desc">Store, Coupon, Benefit, Recommendation Agent가 순차적으로 협업하고 MCP 도구와 Calculator Tool을 호출하는 구조</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#163765" flood-opacity=".12"/></filter>
+    <linearGradient id="hero" x1="0" x2="1"><stop stop-color="#216cff"/><stop offset="1" stop-color="#7a5cff"/></linearGradient>
+    <linearGradient id="tool" x1="0" x2="1"><stop stop-color="#16a5a1"/><stop offset="1" stop-color="#38c9b5"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5a7295"/></marker>
+    <marker id="mintArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#16a5a1"/></marker>
+    <style>
+      .kr { font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .title { font-size: 46px; font-weight: 800; fill: #10284a; }
+      .sub { font-size: 21px; fill: #60728b; }
+      .head { font-size: 22px; font-weight: 800; fill: white; }
+      .body { font-size: 18px; fill: #29415f; }
+      .small { font-size: 15px; fill: #60728b; }
+      .label { font-size: 15px; font-weight: 700; fill: #42607d; }
+      .chip { font-size: 14px; font-weight: 700; fill: #0a6f6d; }
+    </style>
+  </defs>
+
+  <rect width="1800" height="1180" fill="#f7faff"/>
+  <rect x="50" y="38" width="1700" height="1100" rx="38" fill="white" filter="url(#shadow)"/>
+
+  <text x="110" y="128" class="kr title">쿠폰콕 AI Agent Architecture</text>
+  <text x="110" y="168" class="kr sub">역할 분리 · MCP Tool Calling · 결정론적 가격 계산 · Human-in-the-Loop</text>
+
+  <!-- user input -->
+  <rect x="112" y="235" width="330" height="204" rx="24" fill="#eff6ff" stroke="#b8d6ff" stroke-width="2"/>
+  <text x="145" y="285" class="kr" font-size="25" font-weight="800" fill="#1557b0">iPhone 앱</text>
+  <text x="145" y="324" class="kr body">• 위치·매장 진입 맥락</text>
+  <text x="145" y="356" class="kr body">• 구조화된 쿠폰 조건</text>
+  <text x="145" y="388" class="kr body">• 통신사·카드 상품명만</text>
+  <text x="145" y="418" class="kr small">바코드·카드번호·OCR 원문은 전송하지 않음</text>
+
+  <path d="M442 337 H510" stroke="#5a7295" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="438" y="310" class="kr label">Firebase ID Token</text>
+
+  <!-- orchestrator -->
+  <rect x="512" y="213" width="1162" height="507" rx="30" fill="#fbfcff" stroke="#cbd7ec" stroke-width="2"/>
+  <rect x="512" y="213" width="1162" height="68" rx="30" fill="url(#hero)"/>
+  <rect x="512" y="253" width="1162" height="28" fill="url(#hero)"/>
+  <text x="548" y="257" class="kr head">ADK Sequential Orchestrator · 쿠폰콕 멀티 에이전트</text>
+  <text x="1378" y="257" class="kr" font-size="16" font-weight="700" fill="#edf3ff">off / shadow / explanation</text>
+
+  <!-- agent 1 -->
+  <rect x="550" y="322" width="244" height="302" rx="22" fill="white" stroke="#8fb8ff" stroke-width="2"/>
+  <circle cx="584" cy="361" r="18" fill="#216cff"/><text x="578" y="367" class="kr" font-size="18" font-weight="800" fill="white">1</text>
+  <text x="615" y="367" class="kr" font-size="21" font-weight="800" fill="#173b6d">Store Context</text>
+  <text x="575" y="406" class="kr body">매장·좌표 검증</text>
+  <text x="575" y="440" class="kr small">수원 범위 확인</text>
+  <text x="575" y="470" class="kr small">프랜차이즈 식별</text>
+  <rect x="570" y="510" width="202" height="38" rx="19" fill="#e3faf7"/>
+  <text x="588" y="535" class="kr chip">MCP · 매장/지도 검증</text>
+  <text x="575" y="586" class="kr small">출력: store_context</text>
+
+  <!-- agent 2 -->
+  <rect x="827" y="322" width="244" height="302" rx="22" fill="white" stroke="#a9c4fb" stroke-width="2"/>
+  <circle cx="861" cy="361" r="18" fill="#3f7eff"/><text x="855" y="367" class="kr" font-size="18" font-weight="800" fill="white">2</text>
+  <text x="892" y="367" class="kr" font-size="21" font-weight="800" fill="#173b6d">Coupon</text>
+  <text x="852" y="406" class="kr body">후보 쿠폰 정리</text>
+  <text x="852" y="440" class="kr small">브랜드·만료일 필터</text>
+  <text x="852" y="470" class="kr small">조건 누락은 확인 필요</text>
+  <rect x="847" y="510" width="202" height="38" rx="19" fill="#eef4ff"/>
+  <text x="871" y="535" class="kr" font-size="14" font-weight="700" fill="#3260a8">Tool 없이 문맥 정리</text>
+  <text x="852" y="586" class="kr small">출력: coupon_context</text>
+
+  <!-- agent 3 -->
+  <rect x="1104" y="322" width="244" height="302" rx="22" fill="white" stroke="#91d8cf" stroke-width="2"/>
+  <circle cx="1138" cy="361" r="18" fill="#16a5a1"/><text x="1132" y="367" class="kr" font-size="18" font-weight="800" fill="white">3</text>
+  <text x="1169" y="367" class="kr" font-size="21" font-weight="800" fill="#173b6d">Benefit</text>
+  <text x="1129" y="406" class="kr body">공식 혜택 근거 검색</text>
+  <text x="1129" y="440" class="kr small">통신사·카드 조건</text>
+  <text x="1129" y="470" class="kr small">출처·유효기간 확인</text>
+  <rect x="1124" y="510" width="202" height="38" rx="19" fill="#e3faf7"/>
+  <text x="1143" y="535" class="kr chip">MCP · Official RAG</text>
+  <text x="1129" y="586" class="kr small">출력: benefit_context</text>
+
+  <!-- agent 4 -->
+  <rect x="1381" y="322" width="244" height="302" rx="22" fill="white" stroke="#b5a6ff" stroke-width="2"/>
+  <circle cx="1415" cy="361" r="18" fill="#7157e8"/><text x="1409" y="367" class="kr" font-size="18" font-weight="800" fill="white">4</text>
+  <text x="1446" y="367" class="kr" font-size="21" font-weight="800" fill="#173b6d">Recommendation</text>
+  <text x="1406" y="406" class="kr body">추천 이유·출처 설명</text>
+  <text x="1406" y="440" class="kr small">금액을 재계산하지 않음</text>
+  <text x="1406" y="470" class="kr small">사용자 선택권 유지</text>
+  <rect x="1401" y="510" width="202" height="38" rx="19" fill="#f0edff"/>
+  <text x="1419" y="535" class="kr" font-size="14" font-weight="700" fill="#6247c7">MCP · Calculator 호출</text>
+  <text x="1406" y="586" class="kr small">출력: recommendation</text>
+
+  <!-- sequence arrows -->
+  <path d="M794 474 H827" stroke="#5a7295" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M1071 474 H1104" stroke="#5a7295" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M1348 474 H1381" stroke="#5a7295" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="685" y="676" class="kr small">각 단계는 이전 Agent의 구조화된 결과만 전달받음</text>
+
+  <!-- tool layer -->
+  <rect x="112" y="783" width="1562" height="245" rx="30" fill="#f7fffd" stroke="#b3e4dc" stroke-width="2"/>
+  <text x="150" y="832" class="kr" font-size="25" font-weight="800" fill="#0a6f6d">MCP Tools · 신뢰 가능한 실행 계층</text>
+  <rect x="151" y="868" width="280" height="113" rx="18" fill="white" stroke="#a4dbd4" stroke-width="2"/>
+  <text x="178" y="910" class="kr" font-size="18" font-weight="800" fill="#173b6d">① Store Search</text>
+  <text x="178" y="943" class="kr small">data.go.kr · Firestore 캐시</text>
+  <text x="178" y="968" class="kr small">Google Maps MCP → Kakao Fallback</text>
+  <rect x="466" y="868" width="280" height="113" rx="18" fill="white" stroke="#a4dbd4" stroke-width="2"/>
+  <text x="493" y="910" class="kr" font-size="18" font-weight="800" fill="#173b6d">② Benefit Retrieval</text>
+  <text x="493" y="943" class="kr small">승인·활성 공식 RAG 문서만 검색</text>
+  <text x="493" y="968" class="kr small">출처 · 버전 · 유효기간 반환</text>
+  <rect x="781" y="850" width="400" height="150" rx="18" fill="url(#tool)"/>
+  <text x="813" y="900" class="kr" font-size="23" font-weight="800" fill="white">③ Calculator Tool</text>
+  <text x="813" y="935" class="kr" font-size="17" fill="white">최종가 · 절약액 · 순위의 유일한 결정 권한</text>
+  <text x="813" y="967" class="kr" font-size="15" fill="#ecfffc">Agent가 규칙·금액을 생성하거나 수정할 수 없음</text>
+  <rect x="1216" y="868" width="420" height="113" rx="18" fill="white" stroke="#a4dbd4" stroke-width="2"/>
+  <text x="1244" y="910" class="kr" font-size="18" font-weight="800" fill="#173b6d">④ Guardrail · Audit</text>
+  <text x="1244" y="943" class="kr small">PII 차단 · 수원 범위 · 입력 계약 검증</text>
+  <text x="1244" y="968" class="kr small">DLP/Model Armor 정책 · AgentOps Trace</text>
+
+  <path d="M672 624 V790 H292 V868" stroke="#16a5a1" stroke-width="3" fill="none" marker-end="url(#mintArrow)"/>
+  <path d="M1226 624 V790 H606 V868" stroke="#16a5a1" stroke-width="3" fill="none" marker-end="url(#mintArrow)"/>
+  <path d="M1503 624 V790 H981 V850" stroke="#16a5a1" stroke-width="3" fill="none" marker-end="url(#mintArrow)"/>
+
+  <!-- HITL -->
+  <path d="M1674 474 H1730 V1100 H1298" stroke="#7157e8" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <rect x="1045" y="1058" width="515" height="59" rx="28" fill="#f2efff" stroke="#c9bdfb" stroke-width="2"/>
+  <text x="1075" y="1095" class="kr" font-size="18" font-weight="800" fill="#5541ae">Human-in-the-Loop · 사용자 선택 → 바코드 표시 → 사용 처리</text>
+  <text x="110" y="1102" class="kr small">보안 원칙: 원본 쿠폰 이미지·실제 바코드·카드번호는 기기 밖으로 전송하지 않음</text>
+</svg>

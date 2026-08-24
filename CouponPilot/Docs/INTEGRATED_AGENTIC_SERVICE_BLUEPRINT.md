@@ -164,13 +164,14 @@ Cloud SQL을 조기에 추가하면 Firestore와 이중 운영이 된다. **전�
 | Store Context Agent | 현재 POI·브랜드 후보의 맥락 정리 | `search_nearby_stores` | 쿠폰·프로필·바코드 접근 |
 | Coupon Context Agent | OCR 확정값에서 애매한 조건 표시 | 기본은 Tool 없음 | 할인액 추정, 만료·사용 상태 우회 |
 | Benefit Retrieval Agent | 공식 근거 검색 질의와 후보 분류 | `retrieve_official_benefits` | 출처 없는 규칙 생성 |
+| Personalization Agent | 동의된 쿠폰 사용 이력 집계에서 방문 주기·만료 위험 해석 | 기본은 Tool 없음 | 원본 구매 이력 접근, 민감 속성 추론, 금액·순위 변경 |
 | Explanation Agent | 계산 결과와 근거를 이해하기 쉽게 설명 | `calculate_best_discount` 결과 읽기 | 재계산, 순위·금액 변경 |
 
 정책 라우터, 개인정보 검사, Calculator, Output Validator는 Agent가 아니라 코드다. 모델이 틀릴 수 있는 영역에 인증·가격·삭제·상태 변경 권한을 두지 않는다.
 
 ### 4.2 실행 형태
 
-- **현재**: ADK `SequentialAgent`가 네 Agent의 순서를 고정한다.
+- **현재**: ADK `SequentialAgent`가 다섯 Agent의 순서를 고정한다.
 - **보강**: 위치가 없는 요청에서는 Store Tool을 건너뛰는 조건부 경로를 명시한다.
 - **보강**: 각 단계 출력에 JSON Schema와 `confidence`, `needsHumanReview`를 둔다.
 - **목표**: 검색량이 증가하면 통신사·카드 Retrieval을 병렬 실행하되 Calculator 전에 합류한다.

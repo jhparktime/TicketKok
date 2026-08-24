@@ -19,9 +19,11 @@
   },
   "dependencies": {
     "@google-cloud/storage": "^7.16.0",
+    "@google-cloud/opentelemetry-cloud-trace-exporter": "^3.1.0",
     "@google/genai": "^2.16.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/sdk-node": "^0.221.0",
     "express": "^5.1.0",
     "firebase-admin": "^13.4.0",
     "google-auth-library": "^10.9.1",

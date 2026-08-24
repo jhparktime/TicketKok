@@ -10,6 +10,7 @@ iOS (SwiftUI)
                                            ├─ Store Context Agent
                                            ├─ Coupon Understanding Agent
                                            ├─ Benefit Retrieval Agent
+                                           ├─ Personalization Agent
                                            └─ Recommendation Agent
                                                  ↓ Streamable HTTP MCP
                                       CouponCock MCP Cloud Run
@@ -59,7 +60,7 @@ users/{uid}/coupons/{couponId}       # `status: active`인 추천 후보
 users/{uid}/usedCoupons/{historyId}  # 사용 완료 이력, 추천·계산 입력에서 제외
 ```
 
-`usedCoupons`에는 전체 바코드나 쿠폰 이미지를 저장하지 않습니다. 예시 이력에는 상품명, 사용일, 주문번호, 바코드 끝 4자리만 기록합니다.
+`usedCoupons`에는 전체 바코드·쿠폰 이미지·카드사 거래내역을 저장하지 않습니다. 사용자가 결제 완료를 확인한 경우에만 브랜드·상품명·사용 시점과 추천 화면에서 확인한 최종가·절약액을 최소 구매 요약으로 기록합니다. Personalization Agent에는 원본 이력이 아니라 최근 180일의 브랜드별 사용 횟수·마지막 사용 후 경과일·평균 간격만 전달합니다.
 
 ## 카드·은행 혜택 확장 원칙
 

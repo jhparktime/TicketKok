@@ -132,6 +132,15 @@ final class AppState: ObservableObject {
     private var pendingRestoredCouponIDs: Set<String> = []
     private var pendingDeletedCouponIDs: Set<String> = []
 
+    /// 개인화 동의가 있을 때만 최근 사용 이력을 비식별 집계로 변환합니다.
+    /// Agent에는 원본 사용 기록·정확한 시각·매장·상품명·결제금액을 보내지 않습니다.
+    var recommendationPersonalizationContext: PersonalizationContext? {
+        PersonalizationContext.make(
+            from: usedCoupons,
+            enabled: privacyConsent.personalizationAccepted
+        )
+    }
+
     init() {
         if Self.isSubmissionSimulation {
             privacyConsent = PrivacyConsent(
@@ -348,7 +357,7 @@ final class AppState: ObservableObject {
         persistPendingRestoredCouponIDs()
         coupons.removeAll { $0.id == coupon.id }
         if !usedCoupons.contains(where: { $0.id == coupon.id }) {
-            usedCoupons.insert(UsedCoupon(coupon: coupon), at: 0)
+            usedCoupons.insert(UsedCoupon(coupon: coupon, recommendation: recommendation), at: 0)
         }
         armCouponUseUndo(for: coupon)
         persistCouponCollections()

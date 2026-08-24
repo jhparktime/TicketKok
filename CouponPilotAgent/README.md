@@ -4,14 +4,15 @@
 
 ## 실행 흐름
 
-1. `store_context_agent`: 수원 매장 맥락 확인
+1. `store_context_agent`: 대한민국 내 지원 매장 맥락 확인
 2. `coupon_understanding_agent`: 등록 쿠폰 후보 검증
-3. `benefit_retrieval_agent`: 통신사 공식 혜택 RAG 검색
-4. `recommendation_agent`: Calculator MCP 결과를 보존해 추천 설명 생성
+3. `benefit_retrieval_agent`: 통신사·카드 공식 혜택 RAG 검색
+4. `personalization_agent`: 동의된 사용 이력 집계로 방문 주기·만료 위험 해석
+5. `recommendation_agent`: Calculator MCP 결과를 보존해 추천 설명 생성
 
 가격·절약액·중복 가능 여부는 `calculate_best_discount` MCP Tool만 결정합니다.
 
-ADK의 `before_tool_callback`이 민감 필드, 수원시 범위, 통신사, 결제금액과 쿠폰 수를 네트워크 호출 전에 검사합니다. 각 Agent의 출력 토큰은 500~900개로 제한합니다.
+ADK의 `before_tool_callback`이 민감 필드, 대한민국 서비스 범위, 통신사, 결제금액과 쿠폰 수를 네트워크 호출 전에 검사합니다. 개인화 Agent에는 원본 구매 이력이 아니라 브랜드별 횟수·사용 간격 집계만 전달합니다. 각 Agent의 출력 토큰은 500~900개로 제한합니다.
 
 ## 로컬 실행
 

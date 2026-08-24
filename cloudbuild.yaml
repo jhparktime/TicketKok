@@ -38,7 +38,14 @@ steps:
     entrypoint: sh
     args:
       - -c
-      - pip install . pytest && python -m pytest -q tests
+      - pip install . pytest && python scripts/check_prompt_versions.py && python -m pytest -q tests
+
+  - id: vertex-pipeline-contracts
+    name: python:3.12-slim
+    entrypoint: sh
+    args:
+      - -c
+      - pip install -e ./pipelines pytest && python -m pytest -q pipelines/tests && python -m couponcok_pipelines.compile --output /tmp/couponcok-governance-gates.json
 
   - id: build-api-image
     name: gcr.io/cloud-builders/docker

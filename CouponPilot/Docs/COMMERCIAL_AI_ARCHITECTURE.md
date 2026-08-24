@@ -13,9 +13,11 @@ flowchart LR
     A --> S[Store Context Agent]
     A --> C[Coupon Context Agent]
     A --> R[Benefit Retrieval Agent]
+    A --> P[Personalization Agent]
     S --> M[MCP Tools]
     C --> M
     R --> M
+    P --> E
     M --> D[data.go.kr · Firestore\nCloud Storage RAG]
     R --> K[Calculator Tool\nOnly money authority]
     K --> E[Explanation Agent\nGemini 2.5 Flash]
@@ -33,10 +35,11 @@ flowchart LR
 | 1. 매장 맥락 | Store Context Agent | 수원 범위·지원 프랜차이즈 확인, 매장 후보 검색 | 쿠폰·사용자 식별자 전달 | MapKit/캐시 매장으로 제한 |
 | 2. 쿠폰 맥락 | Coupon Context Agent | 브랜드·만료일·확인된 조건으로 후보 정리 | OCR 원문·바코드 재출력, 할인 조건 추정 | 확인 필요 상태로 사용자 편집 요청 |
 | 3. 공식 혜택 검색 | Benefit Retrieval Agent | 통신사·등급·카드 상품명으로 공식 문서 RAG 검색 | 출처 없는 할인 금액 생성 | 쿠폰 단독 계산, ‘공식 근거 없음’ 고지 |
-| 4. 가격 결정 | Calculator MCP Tool | 최종가·절약액·중복·순위를 코드로 계산 | LLM 판단 반영 | 계산 불가 사유와 조건을 반환 |
-| 5. 설명·검증 | Explanation Agent + Validator | 계산 결과와 source URL을 사람이 이해할 문장으로 변환 | 금액·순위·근거 URL 변경 | 템플릿 설명으로 복귀 |
+| 4. 사용 패턴 해석 | Personalization Agent | 동의된 브랜드별 사용 횟수·간격과 만료 위험 설명 | 원본 구매 이력 접근, 민감 속성 추론, 금액·순위 변경 | 개인화 문구 없이 가격 비교 유지 |
+| 5. 가격 결정 | Calculator MCP Tool | 최종가·절약액·중복·순위를 코드로 계산 | LLM 판단 반영 | 계산 불가 사유와 조건을 반환 |
+| 6. 설명·검증 | Explanation Agent + Validator | 계산 결과와 source URL을 사람이 이해할 문장으로 변환 | 금액·순위·근거 URL 변경 | 템플릿 설명으로 복귀 |
 
-현재 ADK Sequential Agent는 1~5의 실행 순서를 고정하며, MCP는 `search_nearby_stores`, `retrieve_carrier_benefits`, `calculate_best_discount`만 노출한다. 이 제한 자체가 에이전트의 권한 경계다.
+현재 ADK Sequential Agent는 Store→Coupon→Benefit→Personalization→Recommendation 실행 순서를 고정한다. MCP Tool은 read-only 계약만 노출하며, 개인화 이력 저장·삭제는 Agent가 아니라 앱·Repository 코드가 수행한다. 이 제한 자체가 에이전트의 권한 경계다.
 
 ## 모델 최적화 원칙
 

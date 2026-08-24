@@ -26,6 +26,20 @@ export type RecommendationInput = {
     cards?: PaymentCard[];
   };
   coupons: Coupon[];
+  /** Consent-gated, aggregate-only history. Raw purchases and exact timestamps are forbidden. */
+  personalization?: PersonalizationContext;
+};
+
+export type PersonalizationContext = {
+  enabled: true;
+  historyWindowDays: number;
+  totalCouponUses: number;
+  brandSignals: Array<{
+    brand: string;
+    usageCount: number;
+    daysSinceLastUse: number;
+    averageIntervalDays?: number;
+  }>;
 };
 
 /** No card number, expiry date, CVC or transaction history is collected. */

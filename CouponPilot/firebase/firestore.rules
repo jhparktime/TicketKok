@@ -8,6 +8,22 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userID;
     }
 
+    function validUsedCouponHistory() {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'brand', 'productName', 'expiresAt', 'usedAt', 'source',
+          'storeName', 'paidAmount', 'savings', 'originalCoupon'
+        ])
+        && data.brand is string && data.brand.size() <= 100
+        && data.productName is string && data.productName.size() <= 200
+        && data.expiresAt is timestamp && data.usedAt is timestamp
+        && data.source is string && data.source.size() <= 100
+        && (!('storeName' in data) || (data.storeName is string && data.storeName.size() <= 150))
+        && (!('paidAmount' in data) || (data.paidAmount is int && data.paidAmount >= 0 && data.paidAmount <= 1000000))
+        && (!('savings' in data) || (data.savings is int && data.savings >= 0 && data.savings <= 1000000))
+        && (!('originalCoupon' in data) || data.originalCoupon is map);
+    }
+
     match /users/{userID} {
       allow read, create, update, delete: if isOwner(userID);
 
@@ -16,7 +32,8 @@ service cloud.firestore {
       }
 
       match /usedCoupons/{couponID} {
-        allow read, create, update, delete: if isOwner(userID);
+        allow read, delete: if isOwner(userID);
+        allow create, update: if isOwner(userID) && validUsedCouponHistory();
       }
 
       match /consents/{policyVersion} {
