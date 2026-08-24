@@ -947,6 +947,14 @@ struct ContentView: View {
                     showDeletePersonalDataConfirmation = true
                 }
             }
+            Section("기타 안내") {
+                DisclosureGroup("브랜드 표지 안내") {
+                    Text("쿠폰 사용처의 브랜드명·표지는 서로 다른 프랜차이즈를 정확히 구분하고 오사용을 방지하기 위한 식별 정보로 최소한의 범위에서 표시합니다. 별도 표시가 없는 한 해당 브랜드와의 제휴·보증을 의미하지 않습니다.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
         .navigationTitle("내 정보")
         .onAppear {

@@ -37,3 +37,7 @@ def main() -> None:
     job = aiplatform.PipelineJob(display_name=f"couponcok-{args.mode}-gate", template_path=args.template, pipeline_root=args.pipeline_root, parameter_values=payload["parameter_values"], enable_caching=False)
     job.submit(service_account=args.service_account)
     print(json.dumps({"submitted": True, "resourceName": job.resource_name}))
+
+
+if __name__ == "__main__":
+    main()
