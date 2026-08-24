@@ -2,7 +2,9 @@ import SwiftUI
 
 struct RecommendationSheet: View {
     let recommendation: Recommendation
-    var onOpenCoupon: (() -> Void)?
+    var canOpenCoupon: ((PriceOption) -> Bool)?
+    var onOpenCoupon: ((PriceOption) -> Void)?
+    @State private var showPriceLeader = false
 
     private var accent: Color { AppPalette.accent }
 
@@ -14,8 +16,8 @@ struct RecommendationSheet: View {
                 VStack(alignment: .leading, spacing: 15) {
                     hero
                     bestOption
-                    if let onOpenCoupon {
-                        Button(action: onOpenCoupon) {
+                    if let onOpenCoupon, canOpenCoupon?(selectedOption) ?? true {
+                        Button { onOpenCoupon(selectedOption) } label: {
                             Label("추천 쿠폰 열기", systemImage: "ticket.fill")
                                 .font(.headline)
                                 .frame(maxWidth: .infinity)
@@ -37,6 +39,15 @@ struct RecommendationSheet: View {
         }
     }
 
+    private var selectedOption: PriceOption {
+        if showPriceLeader, let priceLeader = recommendation.priceLeader { return priceLeader }
+        return recommendation.recommendedOption
+    }
+
+    private var hasPersonalizedReorder: Bool {
+        recommendation.personalizationRanking?.rankChanged == true && recommendation.priceLeader?.id != recommendation.recommendedOption.id
+    }
+
     private var hero: some View {
         RecommendationGlassSurface(tint: accent, cornerRadius: 30) {
             HStack(alignment: .top, spacing: 12) {
@@ -52,7 +63,7 @@ struct RecommendationSheet: View {
                     Text("\(recommendation.storeName)에서")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary.opacity(0.72))
-                    Text("최대 \(recommendation.recommendedOption.savings.formatted())원\n절약할 수 있어요")
+                    Text(heroTitle)
                         .font(.system(size: 27, weight: .bold, design: .rounded))
                         .lineSpacing(-3)
                 }
@@ -73,30 +84,37 @@ struct RecommendationSheet: View {
         }
     }
 
+    private var heroTitle: String {
+        if hasPersonalizedReorder && !showPriceLeader {
+            return "지금 쓰기 좋은\n개인화 추천이에요"
+        }
+        return "최대 \(selectedOption.savings.formatted())원\n절약할 수 있어요"
+    }
+
     private var bestOption: some View {
         RecommendationGlassSurface(tint: accent) {
-            Label("가장 좋은 조합", systemImage: "seal.fill")
+            Label(showPriceLeader ? "Calculator 최대 절약안" : (hasPersonalizedReorder ? "개인화 추천" : "가장 좋은 조합"), systemImage: "seal.fill")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(AppPalette.accent)
 
-            Text(recommendation.recommendedOption.title)
+            Text(selectedOption.title)
                 .font(.title3.weight(.bold))
 
             HStack(alignment: .lastTextBaseline, spacing: 8) {
-                Text("\(recommendation.recommendedOption.finalPrice.formatted())원")
+                Text("\(selectedOption.finalPrice.formatted())원")
                     .font(.system(size: 34, weight: .bold, design: .rounded))
-                Text("정가 \((recommendation.recommendedOption.originalPrice ?? recommendation.originalPrice).formatted())원")
+                Text("정가 \((selectedOption.originalPrice ?? recommendation.originalPrice).formatted())원")
                     .font(.caption)
                     .strikethrough()
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text("−\(recommendation.recommendedOption.savings.formatted())원")
+                Text("−\(selectedOption.savings.formatted())원")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(AppPalette.accent)
             }
 
             FlowLayout(spacing: 7) {
-                ForEach(recommendation.recommendedOption.badges, id: \.self) { badge in
+                ForEach(selectedOption.badges, id: \.self) { badge in
                     Text(badge)
                         .font(.caption2.weight(.bold))
                         .padding(.horizontal, 10)
@@ -113,12 +131,12 @@ struct RecommendationSheet: View {
             Label("생성형 AI가 작성한 추천 설명", systemImage: "sparkles")
                 .font(.headline)
                 .foregroundStyle(AppPalette.ink)
-            Text(recommendation.explanation)
+            Text(showPriceLeader ? calculatorLeaderExplanation : recommendation.explanation)
                 .font(.subheadline)
                 .foregroundStyle(.primary.opacity(0.76))
                 .fixedSize(horizontal: false, vertical: true)
 
-            Label("금액·절약액·순위는 규칙 기반 Calculator 결과이며 AI가 변경할 수 없어요.", systemImage: "checkmark.shield.fill")
+            Label("금액·절약액·가격 기준 순위는 Calculator가 확정합니다. 개인화는 동의된 집계로 표시 우선순위만 조정합니다.", systemImage: "checkmark.shield.fill")
                 .font(.caption)
                 .foregroundStyle(AppPalette.accent)
                 .fixedSize(horizontal: false, vertical: true)
@@ -131,23 +149,50 @@ struct RecommendationSheet: View {
         }
     }
 
+    private var calculatorLeaderExplanation: String {
+        "Calculator 기준 최대 절약안입니다. 최종가는 \(selectedOption.finalPrice.formatted())원이며 \(selectedOption.savings.formatted())원 절약됩니다."
+    }
+
     @ViewBuilder
     private var personalizationSection: some View {
-        if let insight = recommendation.personalizationInsight, !insight.isEmpty {
+        if let ranking = recommendation.personalizationRanking, ranking.applied {
             RecommendationGlassSurface(tint: accent) {
-                Label("내 사용 패턴 참고", systemImage: "chart.line.uptrend.xyaxis")
+                Label("개인화 추천 우선순위", systemImage: "chart.line.uptrend.xyaxis")
                     .font(.headline)
                     .foregroundStyle(AppPalette.ink)
-                Text(insight)
+                Text(recommendation.personalizationInsight ?? "동의된 쿠폰 사용 이력의 집계와 유효기간을 참고해 표시 우선순위를 조정합니다.")
                     .font(.subheadline)
                     .foregroundStyle(.primary.opacity(0.76))
                     .fixedSize(horizontal: false, vertical: true)
-                Label("개인화 동의 시 최근 쿠폰 사용 이력의 집계만 사용하며, 가격·순위는 바꾸지 않아요.", systemImage: "person.crop.circle.badge.checkmark")
+                if !ranking.reasons.isEmpty {
+                    Text(ranking.reasons.joined(separator: " · "))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppPalette.accent)
+                }
+                if ranking.rankChanged, let priceLeader = recommendation.priceLeader {
+                    Text(priceDifferenceDisclosure(for: ranking))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button(showPriceLeader ? "개인화 추천으로 돌아가기" : "최대 절약안 보기") {
+                        withAnimation(.easeInOut(duration: 0.2)) { showPriceLeader.toggle() }
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(AppPalette.accent)
+                    .accessibilityHint("Calculator 가격 기준 1위인 \(priceLeader.title)을 확인합니다")
+                }
+                Label("개인화 동의 시 최근 쿠폰 사용 이력의 집계만 사용하며, 가격 기준 1위와 비용 차이를 함께 보여줍니다.", systemImage: "person.crop.circle.badge.checkmark")
                     .font(.caption)
                     .foregroundStyle(AppPalette.accent)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    private func priceDifferenceDisclosure(for ranking: PersonalizationRanking) -> String {
+        if let maxExtraCostAllowed = ranking.maxExtraCostAllowed {
+            return "가격 기준 1위보다 \(ranking.extraCostComparedToPriceLeader.formatted())원 더 들지만, 개인화 기본 추천은 최대 \(maxExtraCostAllowed.formatted())원 차이 안에서만 바뀝니다."
+        }
+        return "가격 기준 1위보다 \(ranking.extraCostComparedToPriceLeader.formatted())원 더 듭니다. 최대 절약안을 함께 확인해 주세요."
     }
 
     @ViewBuilder

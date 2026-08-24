@@ -108,6 +108,7 @@ final class AppState: ObservableObject {
 
     @Published var currentStore: Store?
     @Published var recommendation: Recommendation?
+    @Published private(set) var activeRecommendationOption: PriceOption?
     @Published var isLoadingRecommendation = false
     @Published var shouldShowRecommendation = false
     @Published private(set) var firebaseUserID: String?
@@ -357,8 +358,9 @@ final class AppState: ObservableObject {
         persistPendingRestoredCouponIDs()
         coupons.removeAll { $0.id == coupon.id }
         if !usedCoupons.contains(where: { $0.id == coupon.id }) {
-            usedCoupons.insert(UsedCoupon(coupon: coupon, recommendation: recommendation), at: 0)
+            usedCoupons.insert(UsedCoupon(coupon: coupon, recommendation: recommendation, selectedOption: activeRecommendationOption), at: 0)
         }
+        activeRecommendationOption = nil
         armCouponUseUndo(for: coupon)
         persistCouponCollections()
         scheduleCloudReconciliation()
@@ -614,6 +616,7 @@ final class AppState: ObservableObject {
 
     func cacheRecommendation(_ recommendation: Recommendation, store: Store) {
         self.recommendation = recommendation
+        activeRecommendationOption = recommendation.recommendedOption
         if let data = try? JSONEncoder().encode(
             NotificationRecommendationContext(store: store, recommendation: recommendation)
         ) {
@@ -628,8 +631,13 @@ final class AppState: ObservableObject {
               context.store.id == storeID else { return false }
         currentStore = context.store
         recommendation = context.recommendation
+        activeRecommendationOption = context.recommendation.recommendedOption
         shouldShowRecommendation = true
         return true
+    }
+
+    func selectRecommendationOption(_ option: PriceOption) {
+        activeRecommendationOption = option
     }
 
     private func hydrateFirebaseData(uid: String) async {

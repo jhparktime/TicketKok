@@ -296,8 +296,10 @@ struct UsedCoupon: Identifiable, Codable, Hashable {
         self.originalCoupon = originalCoupon
     }
 
-    init(coupon: Coupon, recommendation: Recommendation? = nil) {
-        let matchedOption = recommendation?.recommendedOption.id == coupon.id ? recommendation?.recommendedOption : nil
+    init(coupon: Coupon, recommendation: Recommendation? = nil, selectedOption: PriceOption? = nil) {
+        let matchedOption = selectedOption?.id == coupon.id
+            ? selectedOption
+            : (recommendation?.recommendedOption.id == coupon.id ? recommendation?.recommendedOption : nil)
         self.init(id: coupon.id, brand: coupon.brand, productName: coupon.title, expiresAt: coupon.expiresAt,
                   orderNumber: "앱에서 사용 처리", barcodeLast4: "-", usedAt: .now, source: "CouponPilot",
                   storeName: matchedOption == nil ? nil : recommendation?.storeName,
@@ -480,7 +482,7 @@ struct UserProfile: Codable, Equatable {
 }
 
 struct PrivacyConsent: Codable, Equatable {
-    static let currentPolicyVersion = "privacy-2026-08-24.v2"
+    static let currentPolicyVersion = "privacy-2026-08-24.v3"
 
     let policyVersion: String
     let requiredProcessingAccepted: Bool
@@ -510,6 +512,19 @@ struct PriceOption: Identifiable, Codable, Hashable {
     let badges: [String]
 }
 
+/// Calculator의 가격 순위는 보존하고, 동의된 집계로만 표시 우선순위를 조정한 결과입니다.
+struct PersonalizationRanking: Codable, Hashable {
+    let policy: String
+    let applied: Bool
+    let rankChanged: Bool
+    let priceRank: Int
+    let personalizedScore: Int
+    let extraCostComparedToPriceLeader: Int
+    /// Optional for recommendations cached before the price-difference guardrail was introduced.
+    let maxExtraCostAllowed: Int?
+    let reasons: [String]
+}
+
 struct Recommendation: Codable, Hashable {
     let storeName: String
     let originalPrice: Int
@@ -518,8 +533,10 @@ struct Recommendation: Codable, Hashable {
     let explanation: String
     let benefitSources: [BenefitSource]
     let personalizationInsight: String?
+    let priceLeader: PriceOption?
+    let personalizationRanking: PersonalizationRanking?
 
-    init(storeName: String, originalPrice: Int, recommendedOption: PriceOption, alternatives: [PriceOption], explanation: String, benefitSources: [BenefitSource], personalizationInsight: String? = nil) {
+    init(storeName: String, originalPrice: Int, recommendedOption: PriceOption, alternatives: [PriceOption], explanation: String, benefitSources: [BenefitSource], personalizationInsight: String? = nil, priceLeader: PriceOption? = nil, personalizationRanking: PersonalizationRanking? = nil) {
         self.storeName = storeName
         self.originalPrice = originalPrice
         self.recommendedOption = recommendedOption
@@ -527,6 +544,8 @@ struct Recommendation: Codable, Hashable {
         self.explanation = explanation
         self.benefitSources = benefitSources
         self.personalizationInsight = personalizationInsight
+        self.priceLeader = priceLeader
+        self.personalizationRanking = personalizationRanking
     }
 
     static func submissionPreview(for store: Store) -> Recommendation {

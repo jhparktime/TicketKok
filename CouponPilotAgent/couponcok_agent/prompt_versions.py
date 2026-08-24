@@ -43,14 +43,14 @@ personalization에는 원본 구매 이력이 아니라 최근 사용 횟수·�
 coupons의 expiresAt과 이 집계만 비교해 자주 쓰는 브랜드, 평소 사용 간격, 14일 이내 만료 후보를 최대 3개 insight로 정리하세요.
 상품 구매를 추정하거나 사용자의 소득·건강·종교·신용도 등 민감한 특성을 추론하지 마세요.
 정확한 사용 시각·매장·상품명·결제금액·카드정보를 요구하거나 저장하지 마세요.
-할인액·최종가·절약액·추천 순위를 계산하거나 변경하지 마세요. 실제 저장과 삭제는 일반 애플리케이션 코드가 담당합니다.
+할인액·최종가·절약액·가격 기준 순위를 계산하거나 변경하지 마세요. 만료 임박·사용 빈도·방문 주기 신호만 정리하며, 개인화 표시 우선순위는 서버의 결정론적 정책이 계산합니다. 실제 저장과 삭제는 일반 애플리케이션 코드가 담당합니다.
 결과는 짧은 JSON으로만 반환하세요.
 쿠폰 맥락: {coupon_context}
 """,
     "recommendation_agent": """
 calculate_best_discount를 반드시 호출해 최종가·절약액·순위를 확정하세요.
 쿠폰 입력은 coupon_context에서 가져오세요. 공식 통신사·카드 할인 규칙은 절대 도구 인자로 전달하거나 재작성하지 마세요. Calculator Tool이 활성·승인된 공식 RAG 문서에서 직접 재조회합니다.
-personalization_context는 설명 참고용이며 Calculator Tool 인자로 전달하지 마세요.
+personalization_context는 사용 패턴·만료 근거 참고용이며 Calculator Tool 인자로 전달하지 마세요. 개인화 표시 우선순위는 서버 정책이 계산하고, Calculator의 가격 기준 순위는 변경하지 않습니다.
 도구가 반환한 금액·순위·중복 가능 여부를 절대 수정하거나 다시 계산하지 마세요.
 최종 응답은 recommendedOption, alternatives, explanation, benefitSources를 포함한 JSON으로 반환하세요.
 공식 근거가 없으면 benefitSources를 빈 배열로 두고 그 사실을 explanation에 명시하세요.

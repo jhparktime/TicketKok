@@ -6,7 +6,7 @@ import { calculateOptions, matchingBenefitRules } from "../src/calculator.js";
 import { adkResultMatchesCalculator, shouldRunAdk } from "../src/adkClient.js";
 import { validateBenefitDocument } from "../src/benefitRag.js";
 import { assertAgentPayloadSafe, findSensitiveValue, pseudonymizeSubject, redactSensitiveText } from "../src/privacy.js";
-import { app, buildPersonalizationInsight, cardRecognitionInputIsSafe, isWithinKorea } from "../src/server.js";
+import { app, buildPersonalizationInsight, buildPersonalizedOptions, cardRecognitionInputIsSafe, isWithinKorea } from "../src/server.js";
 import { createMcpApp } from "../src/mcpServer.js";
 import { sanitizeTraceAttributes } from "../src/observability.js";
 
@@ -182,7 +182,63 @@ try {
   }, "best", new Date("2026-08-24T00:00:00.000Z"));
   assert.match(personalizationInsight ?? "", /4회 사용/u);
   assert.match(personalizationInsight ?? "", /6일 안에 만료/u);
-  assert.match(personalizationInsight ?? "", /금액·순위를 변경하지 않습니다/u);
+  assert.match(personalizationInsight ?? "", /할인 금액은 Calculator가 확정/u);
+
+  const personalized = buildPersonalizedOptions({
+    storeId: "twosome-seoul",
+    storeName: "투썸플레이스 강남점",
+    expectedPrice: 10_000,
+    profile: { carrier: "없음" },
+    coupons: [
+      { id: "price-leader", brand: "투썸플레이스", title: "3,000원 할인", discountType: "fixedAmount", discountValue: 3_000, minimumOrderAmount: 0, combinableWithCard: false, expiresAt: "2026-10-01T00:00:00.000Z" },
+      { id: "expires-soon", brand: "투썸플레이스", title: "2,500원 할인", discountType: "fixedAmount", discountValue: 2_500, minimumOrderAmount: 0, combinableWithCard: false, expiresAt: "2026-08-30T00:00:00.000Z" }
+    ],
+    personalization: {
+      enabled: true,
+      historyWindowDays: 180,
+      totalCouponUses: 4,
+      brandSignals: [{ brand: "투썸플레이스", usageCount: 4, daysSinceLastUse: 12, averageIntervalDays: 10 }]
+    }
+  }, [
+    { id: "price-leader", title: "3,000원 할인", originalPrice: 10_000, finalPrice: 7_000, savings: 3_000, badges: ["쿠폰"] },
+    { id: "expires-soon", title: "2,500원 할인", originalPrice: 10_000, finalPrice: 7_500, savings: 2_500, badges: ["쿠폰"] }
+  ], new Date("2026-08-24T00:00:00.000Z"));
+  assert.equal(personalized?.priceLeader.id, "price-leader", "Calculator price leader remains independently visible");
+  assert.equal(personalized?.orderedOptions[0].id, "expires-soon", "expiry evidence can change only the displayed recommendation priority");
+  assert.equal(personalized?.ranking?.extraCostComparedToPriceLeader, 500);
+  assert.equal(personalized?.ranking?.maxExtraCostAllowed, 1_000);
+  assert.equal(personalized?.ranking?.rankChanged, true);
+
+  const excessiveCostPersonalization = buildPersonalizedOptions({
+    storeId: "twosome-seoul",
+    storeName: "투썸플레이스 강남점",
+    expectedPrice: 10_000,
+    profile: { carrier: "없음" },
+    coupons: [
+      { id: "price-leader", brand: "투썸플레이스", title: "5,000원 할인", discountType: "fixedAmount", discountValue: 5_000, minimumOrderAmount: 0, combinableWithCard: false, expiresAt: "2026-10-01T00:00:00.000Z" },
+      { id: "today-expiry", brand: "투썸플레이스", title: "2,000원 할인", discountType: "fixedAmount", discountValue: 2_000, minimumOrderAmount: 0, combinableWithCard: false, expiresAt: "2026-08-24T23:59:59.000Z" }
+    ],
+    personalization: {
+      enabled: true,
+      historyWindowDays: 180,
+      totalCouponUses: 4,
+      brandSignals: [{ brand: "투썸플레이스", usageCount: 4, daysSinceLastUse: 12, averageIntervalDays: 10 }]
+    }
+  }, [
+    { id: "price-leader", title: "5,000원 할인", originalPrice: 10_000, finalPrice: 5_000, savings: 5_000, badges: ["쿠폰"] },
+    { id: "today-expiry", title: "2,000원 할인", originalPrice: 10_000, finalPrice: 8_000, savings: 2_000, badges: ["쿠폰"] }
+  ], new Date("2026-08-24T00:00:00.000Z"));
+  assert.equal(excessiveCostPersonalization?.orderedOptions[0].id, "price-leader", "personalization must not override the price leader above the cost guardrail");
+  assert.equal(excessiveCostPersonalization?.ranking?.rankChanged, false);
+
+  const expiryRecommendationInsight = buildPersonalizationInsight({
+    storeId: "twosome-seoul",
+    expectedPrice: 10_000,
+    profile: { carrier: "없음" },
+    coupons: [{ id: "today-expiry", brand: "투썸플레이스", title: "오늘 만료 2,500원 할인", discountType: "fixedAmount", discountValue: 2_500, minimumOrderAmount: 0, combinableWithCard: false, expiresAt: "2026-08-24T23:59:59.000Z" }],
+    personalization: { enabled: true, historyWindowDays: 180, totalCouponUses: 1, brandSignals: [] }
+  }, "today-expiry", new Date("2026-08-24T00:00:00.000Z"));
+  assert.match(expiryRecommendationInsight ?? "", /오늘 만료/u, "the selected expiry candidate must explain its own expiry risk");
 
   const rawPurchaseHistory = await fetch(`${baseURL}/v1/recommendations`, {
     method: "POST",

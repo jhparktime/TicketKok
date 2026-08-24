@@ -161,10 +161,15 @@ struct ContentView: View {
             if let recommendation = appState.recommendation {
                 RecommendationSheet(
                     recommendation: recommendation,
-                    onOpenCoupon: appState.coupons.contains(where: { $0.id == recommendation.recommendedOption.id }) ? {
+                    canOpenCoupon: { option in
+                        appState.coupons.contains(where: { $0.id == option.id })
+                    },
+                    onOpenCoupon: { option in
+                        guard let coupon = appState.coupons.first(where: { $0.id == option.id }) else { return }
+                        appState.selectRecommendationOption(option)
                         appState.shouldShowRecommendation = false
-                        selectedRecommendationCoupon = appState.coupons.first { $0.id == recommendation.recommendedOption.id }
-                    } : nil
+                        selectedRecommendationCoupon = coupon
+                    }
                 )
                     .presentationDetents([.large])
                     .presentationCornerRadius(34)
@@ -864,7 +869,7 @@ struct ContentView: View {
                         if !accepted { locationMonitor.stopMonitoring() }
                     }
                 ))
-                Text("선택 동의이며 언제든 철회할 수 있어요. 개인화 Agent에는 최근 쿠폰 사용 횟수·간격의 집계만 전달합니다. 위치 이력, 카드번호·CVC·카드사 거래내역은 수집하지 않습니다.")
+                Text("선택 동의이며 언제든 철회할 수 있어요. 개인화에는 최근 쿠폰 사용 횟수·간격과 만료 임박 집계만 사용하며, 가격 기준 1위와 비용 차이를 표시한 추천 우선순위를 제공할 수 있어요. 위치 이력, 카드번호·CVC·카드사 거래내역은 수집하지 않습니다.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -1372,7 +1377,7 @@ private struct PrivacyConsentView: View {
                     )
                     consentCard(
                         title: "쿠폰·멤버십 초개인화",
-                        detail: "보유 쿠폰, 통신사·등급, 카드 상품명과 사용 처리한 쿠폰의 브랜드·사용 시점·확인된 최종가를 이용합니다. Agent에는 최근 180일의 브랜드별 횟수·사용 간격 집계만 전달합니다. 카드번호와 카드사 거래내역은 수집하지 않습니다.",
+                        detail: "보유 쿠폰, 통신사·등급, 카드 상품명과 사용 처리한 쿠폰의 브랜드·사용 시점·확인된 최종가를 이용합니다. 최근 180일의 브랜드별 횟수·사용 간격과 만료 임박 집계로 추천 우선순위를 조정할 수 있으며, 가격 기준 1위와의 차이를 항상 표시합니다. 카드번호와 카드사 거래내역은 수집하지 않습니다.",
                         isOn: $personalizationAccepted,
                         required: false
                     )
@@ -1383,7 +1388,7 @@ private struct PrivacyConsentView: View {
                         required: false
                     )
 
-                    Label("생성형 AI는 쿠폰 문구와 추천 이유를 설명하며, 금액과 순위는 규칙 기반 Calculator가 확정합니다.", systemImage: "sparkles")
+                    Label("Calculator는 금액·절약액·가격 기준 순위를 확정합니다. 개인화는 동의된 집계로만 추천 표시 우선순위를 조정하며, 최대 절약안은 항상 함께 보여줍니다.", systemImage: "sparkles")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
 

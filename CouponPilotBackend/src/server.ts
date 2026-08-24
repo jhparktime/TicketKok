@@ -13,6 +13,7 @@ import {
   couponMatchesStore,
   isSupportedFranchiseStore,
   matchingBenefitRules,
+  type CalculatedOption,
   type RecommendationInput
 } from "./calculator.js";
 import { initializeObservability, observabilityStatus, recordAIUsage, requestCorrelationID, traceHttpRequest, traceOperation } from "./observability.js";
@@ -423,6 +424,98 @@ function safeRecommendationExplanation(option: ExplanationOption, sources: Expla
  * Only aggregate usage counts/intervals and coupon expiry dates are used. Raw purchase events,
  * exact timestamps and payment instruments are not accepted by the request schema.
  */
+export type PersonalizationRanking = {
+  policy: "balanced_expiry_and_usage_v1";
+  applied: boolean;
+  rankChanged: boolean;
+  priceRank: number;
+  personalizedScore: number;
+  extraCostComparedToPriceLeader: number;
+  maxExtraCostAllowed: number;
+  reasons: string[];
+};
+
+type PersonalizedOptions = {
+  orderedOptions: CalculatedOption[];
+  priceLeader: CalculatedOption;
+  ranking?: PersonalizationRanking;
+};
+
+/**
+ * Preserve Calculator's economic order, then apply a narrowly bounded display-priority policy.
+ * A personalized default may never cost more than the lower of 10% of the price leader's
+ * reference price or 1,000 KRW. More expensive expiry candidates remain visible as alternatives.
+ */
+export function buildPersonalizedOptions(input: RecommendationInput, priceOrderedOptions: CalculatedOption[], now = new Date()): PersonalizedOptions | undefined {
+  const priceLeader = priceOrderedOptions[0];
+  const context = input.personalization;
+  if (!priceLeader || !context?.enabled || context.totalCouponUses === 0) {
+    return priceLeader ? { orderedOptions: priceOrderedOptions, priceLeader } : undefined;
+  }
+
+  const referencePrice = priceLeader.originalPrice ?? priceLeader.finalPrice;
+  const maxExtraCostAllowed = Math.min(1_000, Math.floor(referencePrice * 0.1));
+  const scored = priceOrderedOptions.map((option, index) => {
+    const coupon = input.coupons.find((candidate) => candidate.id === option.id);
+    const signal = coupon
+      ? context.brandSignals.find((candidate) => normalizedText(candidate.brand) === normalizedText(coupon.brand))
+      : undefined;
+    const reasons: string[] = [];
+    let score = 0;
+
+    if (coupon?.expiresAt && couponIsActive(coupon, now)) {
+      const daysUntilExpiry = Math.max(0, Math.ceil((new Date(coupon.expiresAt).getTime() - now.getTime()) / 86_400_000));
+      const expiryScore = daysUntilExpiry <= 2 ? 55 : daysUntilExpiry <= 7 ? 40 : daysUntilExpiry <= 14 ? 22 : 0;
+      if (expiryScore > 0) {
+        score += expiryScore;
+        reasons.push(daysUntilExpiry === 0 ? "오늘 만료" : `${daysUntilExpiry}일 후 만료`);
+      }
+    }
+    if (signal) {
+      const frequencyScore = Math.min(20, signal.usageCount * 4);
+      score += frequencyScore;
+      if (frequencyScore > 0) reasons.push(`최근 ${context.historyWindowDays}일 ${signal.usageCount}회 사용`);
+      if (signal.averageIntervalDays !== undefined && signal.averageIntervalDays > 0 && signal.daysSinceLastUse >= signal.averageIntervalDays) {
+        score += 12;
+        reasons.push("평소 사용 주기 도래");
+      }
+    }
+
+    const savingsGap = Math.max(0, priceLeader.savings - option.savings);
+    score -= Math.min(45, Math.ceil(savingsGap / 100) * 4);
+    const extraCostComparedToPriceLeader = Math.max(0, option.finalPrice - priceLeader.finalPrice);
+    return {
+      option,
+      priceRank: index + 1,
+      score,
+      reasons,
+      extraCostComparedToPriceLeader,
+      eligibleForPersonalizedDefault: extraCostComparedToPriceLeader <= maxExtraCostAllowed
+    };
+  }).sort((left, right) => right.score - left.score || right.option.savings - left.option.savings || left.option.finalPrice - right.option.finalPrice);
+
+  const selected = scored.find((candidate) => candidate.eligibleForPersonalizedDefault) ?? scored.find((candidate) => candidate.option.id === priceLeader.id)!;
+  const priceLeaderScore = scored.find((candidate) => candidate.option.id === priceLeader.id)?.score ?? 0;
+  const rankChanged = selected.option.id !== priceLeader.id && selected.score > priceLeaderScore;
+  const recommended = rankChanged ? selected : scored.find((candidate) => candidate.option.id === priceLeader.id)!;
+  return {
+    orderedOptions: rankChanged
+      ? [recommended.option, ...scored.filter((candidate) => candidate.option.id !== recommended.option.id).map((candidate) => candidate.option)]
+      : priceOrderedOptions,
+    priceLeader,
+    ranking: {
+      policy: "balanced_expiry_and_usage_v1",
+      applied: true,
+      rankChanged,
+      priceRank: recommended.priceRank,
+      personalizedScore: recommended.score,
+      extraCostComparedToPriceLeader: recommended.extraCostComparedToPriceLeader,
+      maxExtraCostAllowed,
+      reasons: recommended.reasons
+    }
+  };
+}
+
 export function buildPersonalizationInsight(input: RecommendationInput, recommendedOptionID: string, now = new Date()) {
   const context = input.personalization;
   if (!context?.enabled || context.totalCouponUses === 0) return undefined;
@@ -439,6 +532,14 @@ export function buildPersonalizationInsight(input: RecommendationInput, recommen
     parts.push(`최근 ${context.historyWindowDays}일 동안 ${signal.brand} 쿠폰을 ${signal.usageCount}회 사용했습니다. ${interval}`);
   }
 
+  if (recommendedCoupon?.expiresAt && couponIsActive(recommendedCoupon, now)) {
+    const daysUntilExpiry = Math.max(0, Math.ceil((new Date(recommendedCoupon.expiresAt).getTime() - now.getTime()) / 86_400_000));
+    if (daysUntilExpiry <= 14) {
+      const expiryDescription = daysUntilExpiry === 0 ? "오늘 만료됩니다" : `${daysUntilExpiry}일 안에 만료됩니다`;
+      parts.push(`${recommendedCoupon.brand}의 '${recommendedCoupon.title}'은 ${expiryDescription}.`);
+    }
+  }
+
   const expiringAlternative = input.coupons
     .filter((coupon) => coupon.id !== recommendedOptionID && coupon.expiresAt && couponIsActive(coupon, now))
     .map((coupon) => ({
@@ -451,7 +552,7 @@ export function buildPersonalizationInsight(input: RecommendationInput, recommen
     parts.push(`${expiringAlternative.coupon.brand}의 '${expiringAlternative.coupon.title}'은 ${expiringAlternative.days}일 안에 만료되므로 다음 방문 전에 먼저 확인할 가치가 있습니다.`);
   }
 
-  return parts.length ? `${parts.join(" ")} 이 정보는 선택을 돕는 참고 근거이며 Calculator의 금액·순위를 변경하지 않습니다.` : undefined;
+  return parts.length ? `${parts.join(" ")} 할인 금액은 Calculator가 확정하며, 개인화는 이 근거를 바탕으로 추천 우선순위를 조정할 수 있습니다.` : undefined;
 }
 
 function normalizedText(value: string) {
@@ -865,12 +966,14 @@ app.post("/v1/recommendations", async (req: AuthenticatedRequest, res) => {
       console.error("Benefit RAG unavailable for recommendation", error);
     }
   }
-  const [recommendedOption, ...alternatives] = await traceOperation("tool.calculate_best_discount", {
+  const priceOrderedOptions = await traceOperation("tool.calculate_best_discount", {
     "couponcok.store": storeName,
     "couponcok.coupon_count": matchedCoupons.length,
     "couponcok.benefit_source_count": benefitChunks.length,
     ...(requestId ? { "couponcok.request_id": requestId } : {})
   }, async () => calculateOptions(matchedInput, matchingBenefitRules(input.profile, storeName, benefitChunks)));
+  const personalizedOptions = buildPersonalizedOptions(matchedInput, priceOrderedOptions);
+  const [recommendedOption, ...alternatives] = personalizedOptions?.orderedOptions ?? [];
   if (!recommendedOption) return res.status(400).json({ error: "at least one coupon is required" });
 
   const benefitSources = benefitChunks.map((chunk) => ({
@@ -919,6 +1022,8 @@ app.post("/v1/recommendations", async (req: AuthenticatedRequest, res) => {
     explanation,
     benefitSources,
     personalizationInsight,
+    priceLeader: personalizedOptions?.priceLeader,
+    personalizationRanking: personalizedOptions?.ranking,
     agentRun
   });
 });
