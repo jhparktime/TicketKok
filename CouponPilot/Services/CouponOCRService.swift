@@ -1,3 +1,4 @@
+import Foundation
 import UIKit
 @preconcurrency import Vision
 
@@ -12,15 +13,16 @@ struct CouponOCRService {
         guard let cgImage = image.cgImage else { throw OCRServiceError.invalidImage }
 
         return try await withCheckedThrowingContinuation { continuation in
+            let gate = VisionContinuationGate(continuation)
             let request = VNRecognizeTextRequest { request, error in
-                if let error { continuation.resume(throwing: error); return }
+                if let error { gate.resume(.failure(error)); return }
                 let boxes = (request.results as? [VNRecognizedTextObservation])?
                     .compactMap { observation -> RecognizedTextBox? in
                         guard let text = observation.topCandidates(1).first?.string,
                               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
                         return RecognizedTextBox(text: text, normalizedBoundingBox: observation.boundingBox)
                     } ?? []
-                continuation.resume(returning: boxes)
+                gate.resume(.success(boxes))
             }
             request.recognitionLevel = .accurate
             request.usesLanguageCorrection = true
@@ -28,7 +30,7 @@ struct CouponOCRService {
 
             DispatchQueue.global(qos: .userInitiated).async {
                 do { try VNImageRequestHandler(cgImage: cgImage).perform([request]) }
-                catch { continuation.resume(throwing: error) }
+                catch { gate.resume(.failure(error)) }
             }
         }
     }
@@ -61,8 +63,9 @@ struct CouponOCRService {
     func detectRedeemableCouponBarcodes(in image: UIImage) async throws -> [CouponBarcodeCandidate] {
         guard let cgImage = image.cgImage else { throw OCRServiceError.invalidImage }
         return try await withCheckedThrowingContinuation { continuation in
+            let gate = VisionContinuationGate(continuation)
             let request = VNDetectBarcodesRequest { request, error in
-                if let error { continuation.resume(throwing: error); return }
+                if let error { gate.resume(.failure(error)); return }
                 let candidates = ((request.results as? [VNBarcodeObservation]) ?? []).compactMap { observation -> CouponBarcodeCandidate? in
                     guard let value = observation.payloadStringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
                           !value.isEmpty,
@@ -71,12 +74,12 @@ struct CouponOCRService {
                     return CouponBarcodeCandidate(value: value, format: format)
                 }
                 let unique = Array(Dictionary(grouping: candidates, by: \.id).values.compactMap(\.first))
-                continuation.resume(returning: unique)
+                gate.resume(.success(unique))
             }
             request.symbologies = [.code128, .qr, .dataMatrix, .pdf417, .aztec]
             DispatchQueue.global(qos: .userInitiated).async {
                 do { try VNImageRequestHandler(cgImage: cgImage).perform([request]) }
-                catch { continuation.resume(throwing: error) }
+                catch { gate.resume(.failure(error)) }
             }
         }
     }
@@ -109,6 +112,29 @@ struct CouponOCRService {
             frontVisualSignatureBase64: imageData.base64EncodedString(),
             sensitiveValuesMasked: frontSafeText.maskedSensitiveValues || backSafeText.maskedSensitiveValues
         )
+    }
+}
+
+/// Vision can invoke a request completion and still surface an error from `perform(_:)` while
+/// the request handler unwinds. CheckedContinuation traps on a second resume, so every Vision
+/// bridge uses this lock-protected one-shot gate.
+private final class VisionContinuationGate<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Value, Error>?
+
+    init(_ continuation: CheckedContinuation<Value, Error>) {
+        self.continuation = continuation
+    }
+
+    func resume(_ result: Result<Value, Error>) {
+        lock.lock()
+        guard let continuation else {
+            lock.unlock()
+            return
+        }
+        self.continuation = nil
+        lock.unlock()
+        continuation.resume(with: result)
     }
 }
 
@@ -244,12 +270,7 @@ enum CouponOCRParser {
         var draft = CouponDraft()
         let joined = lines.joined(separator: " ")
         draft.brand = SupportedFranchise.detected(in: joined)?.displayName ?? ""
-        draft.title = lines.first(where: { line in
-            !line.localizedCaseInsensitiveContains("유효기간") &&
-            !line.localizedCaseInsensitiveContains("주문번호") &&
-            !line.localizedCaseInsensitiveContains("교환처") &&
-            line.count > 4
-        }) ?? ""
+        draft.title = bestProductTitle(from: lines, brand: draft.brand)
 
         if let amount = firstNumber(matching: #"(\d{1,3}(?:,\d{3})*)\s*원\s*할인"#, in: joined) {
             draft.discountType = .fixedAmount
@@ -260,7 +281,52 @@ enum CouponOCRParser {
         }
 
         if let expiry = expiryDate(in: joined) { draft.expiresAt = expiry }
+        // A product price is usable only when the image explicitly labels it as such. A barcode
+        // value, gift value, or discount amount must never become a Calculator reference price.
+        draft.referencePrice = explicitProductPrice(in: joined)
         return draft
+    }
+
+    private static func bestProductTitle(from lines: [String], brand: String) -> String {
+        let excludedTerms = [
+            "유효기간", "주문번호", "교환처", "바코드", "선물하기", "카카오톡", "사용처",
+            "교환권", "쿠폰번호", "결제", "고객센터", "주의사항", "상품가격", "정상가", "판매가"
+        ]
+        let productHints = [
+            "아메리카노", "라떼", "프라푸치노", "콜드브루", "티", "tea", "coffee", "카스텔라",
+            "케이크", "베이커리", "음료", "샌드위치", "세트", "잔", "tall", "grande", "venti"
+        ]
+
+        let candidates = lines.compactMap { rawLine -> (title: String, score: Int)? in
+            var line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard line.count >= 3 else { return nil }
+            guard !excludedTerms.contains(where: { line.localizedCaseInsensitiveContains($0) }) else { return nil }
+            guard !line.localizedCaseInsensitiveContains("만료") else { return nil }
+
+            if !brand.isEmpty {
+                line = line.replacingOccurrences(of: brand, with: "", options: [.caseInsensitive])
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            line = line.replacingOccurrences(of: #"^(?:상품명|상품)\\s*[:：]?\\s*"#, with: "", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard line.count >= 3,
+                  line.rangeOfCharacter(from: .letters) != nil else { return nil }
+
+            let hintScore = productHints.reduce(0) { partial, hint in
+                partial + (line.localizedCaseInsensitiveContains(hint) ? 30 : 0)
+            }
+            // Product names are normally descriptive but short. Penalize long boilerplate.
+            let lengthScore = max(0, 36 - abs(line.count - 22))
+            return (line, hintScore + lengthScore)
+        }
+        return candidates.max(by: { $0.score < $1.score })?.title ?? ""
+    }
+
+    private static func explicitProductPrice(in text: String) -> Int? {
+        firstNumber(
+            matching: #"(?:상품가격|상품가|정상가|판매가)\\s*[:：]?\\s*(\\d{1,3}(?:,\\d{3})*)\\s*원"#,
+            in: text
+        )
     }
 
     private static func firstNumber(matching pattern: String, in text: String) -> Int? {
@@ -280,5 +346,23 @@ enum CouponOCRParser {
         }
         guard values.count == 3 else { return nil }
         return Calendar(identifier: .gregorian).date(from: DateComponents(year: values[0], month: values[1], day: values[2]))
+    }
+}
+
+/// Capture-only product composition prices. This fixture is never used in a normal app,
+/// synchronized wallet, recommendation request, or Cloud Run calculation.
+enum SubmissionCapturePriceCatalog {
+    static func referencePrice(brand: String, productName: String) -> Int? {
+        guard SupportedFranchise.detected(in: brand) == .starbucks else { return nil }
+        let normalized = productName
+            .lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .joined()
+        let twoTallAmericanos = [
+            "아이스카페아메리카노t2잔",
+            "아이스카페아메리카노tall2잔",
+            "아이스카페아메리카노2잔"
+        ]
+        return twoTallAmericanos.contains(normalized) ? 9_400 : nil
     }
 }

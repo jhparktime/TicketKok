@@ -60,6 +60,17 @@ struct CouponNormalization: Decodable {
     let requiresConfirmation: Bool
 }
 
+/// Exact-match product price returned from an active, reviewed official RAG document.
+struct OfficialProductPriceMatch: Decodable, Equatable {
+    let brand: String
+    let productName: String
+    let priceWon: Int
+    let sourceTitle: String
+    let sourceURL: String
+    let checkedAt: String
+    let version: String
+}
+
 struct AgentAPIService {
     /// API Gateway verifies Firebase ID tokens before forwarding to the private Cloud Run service.
     var baseURL = URL(string: "https://coupon-pilot-mobile-7o9xbhxu.an.gateway.dev")!
@@ -122,6 +133,17 @@ struct AgentAPIService {
         return try JSONDecoder().decode(CouponNormalizationResponse.self, from: data).coupon
     }
 
+    /// Never estimates a price. The API returns nil when no active official document has an
+    /// exact product-name or approved alias match.
+    func fetchOfficialProductPrice(brand: String, productName: String) async throws -> OfficialProductPriceMatch? {
+        var request = try await authenticatedRequest(url: baseURL.appendingPathComponent("v1/catalog/product-price"), method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["brand": brand, "productName": productName])
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else { throw URLError(.badServerResponse) }
+        return try JSONDecoder().decode(OfficialProductPriceLookupResponse.self, from: data).price
+    }
+
     /// Calls Gemini with device-redacted OCR text plus a front visual signature. The signature is
     /// a re-rendered image where all Vision-detected text and the lower sensitive half are blacked
     /// out, and it is rejected on-device if Vision can still read text. The back never leaves iOS.
@@ -146,6 +168,11 @@ private struct NearbyStoreResponse: Decodable {
 
 private struct CouponNormalizationResponse: Decodable {
     let coupon: CouponNormalization
+}
+
+private struct OfficialProductPriceLookupResponse: Decodable {
+    let found: Bool
+    let price: OfficialProductPriceMatch?
 }
 
 private struct CardRecognitionRequest: Encodable {

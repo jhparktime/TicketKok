@@ -6,7 +6,7 @@ import { getAppCheck } from "firebase-admin/app-check";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { searchOfficialBenefits } from "./benefitRag.js";
+import { findOfficialProductPrice, searchOfficialBenefits } from "./benefitRag.js";
 import {
   calculateOptions,
   couponIsActive,
@@ -124,6 +124,11 @@ const cardRecognitionRequestSchema = z.object({
   backText: z.string().max(2_500),
   frontVisualSignatureBase64: z.string().min(100).max(160_000).regex(/^[A-Za-z0-9+/=]+$/u),
   userApprovedCloudAnalysis: z.literal(true)
+}).strict();
+
+const productPriceLookupSchema = z.object({
+  brand: z.string().trim().min(2).max(100),
+  productName: z.string().trim().min(3).max(200)
 }).strict();
 
 const CARD_PRODUCT_CATALOG = [
@@ -307,6 +312,7 @@ app.use("/v1", requireFirebaseAuth);
 const endpointQuotas: Record<string, { windowMs: number; limit: number }> = {
   "GET /v1/stores/nearby": { windowMs: 60 * 60 * 1_000, limit: 120 },
   "GET /v1/benefits/search": { windowMs: 24 * 60 * 60 * 1_000, limit: 120 },
+  "POST /v1/catalog/product-price": { windowMs: 24 * 60 * 60 * 1_000, limit: 120 },
   "POST /v1/coupons/normalize": { windowMs: 24 * 60 * 60 * 1_000, limit: 30 },
   // Multimodal calls are intentionally scarce: each one is an explicit user action and bills a
   // model request, while no card image or OCR text is persisted for retry.
@@ -905,6 +911,27 @@ app.get("/v1/benefits/search", async (req, res) => {
   } catch (error) {
     console.error("Benefit RAG search failed", error);
     res.status(503).json({ error: "official benefits are temporarily unavailable" });
+  }
+});
+
+/**
+ * Returns only an exact match from an active, independently approved official product-price
+ * document. A missing, stale, ambiguous, or non-official price returns `found: false` rather
+ * than a guessed amount.
+ */
+app.post("/v1/catalog/product-price", async (req, res) => {
+  const parsed = productPriceLookupSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "brand and productName are required" });
+  try {
+    const match = await traceOperation("rag.official_product_price", {
+      "couponcok.brand_length": parsed.data.brand.length,
+      "couponcok.product_name_length": parsed.data.productName.length
+    }, () => findOfficialProductPrice(parsed.data.brand, parsed.data.productName));
+    if (!match) return res.json({ found: false });
+    return res.json({ found: true, price: match });
+  } catch (error) {
+    console.error("Official product-price RAG lookup failed", error);
+    return res.status(503).json({ error: "official product price is temporarily unavailable" });
   }
 });
 

@@ -14,6 +14,7 @@ struct CouponImportSheet: View {
     @State private var barcodeCandidates: [CouponBarcodeCandidate] = []
     @State private var selectedBarcode: CouponBarcodeCandidate?
     @State private var saveRedeemableBarcode = false
+    @State private var officialPriceEvidence: OfficialProductPriceMatch?
     @State private var errorMessage: String?
 
     var body: some View {
@@ -127,19 +128,6 @@ struct CouponImportSheet: View {
             }
             .buttonStyle(.plain)
 
-            if AppState.isSubmissionSimulation {
-                Button {
-                    Task { await loadBundledDemoCoupon() }
-                } label: {
-                    Label("시연용 쿠폰 사진 불러오기", systemImage: "play.rectangle.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                }
-                .buttonStyle(.bordered)
-                .tint(AppPalette.accent)
-                .accessibilityHint("번들에 포함된 메가MGC커피 쿠폰 사진으로 OCR 시연을 시작합니다")
-            }
         }
     }
 
@@ -179,6 +167,27 @@ struct CouponImportSheet: View {
                     .frame(width: 86)
                 Text(draft.discountType == .fixedAmount ? "원" : "%")
                     .foregroundStyle(.secondary)
+            }
+
+            HStack {
+                Text("상품 기준가")
+                Spacer()
+                TextField("미확인", value: $draft.referencePrice, format: .number)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 86)
+                Text("원").foregroundStyle(.secondary)
+            }
+            if !AppState.isSubmissionSimulation {
+                Text("사진에 상품가·정상가가 명시된 경우에만 자동 입력합니다. 없으면 비워 두고 확인해 주세요.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if let officialPriceEvidence {
+                Label("공식 가격 문서 확인 · \(officialPriceEvidence.checkedAt)", systemImage: "checkmark.seal.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppPalette.accent)
+                    .accessibilityLabel("공식 가격 문서 \(officialPriceEvidence.sourceTitle), \(officialPriceEvidence.checkedAt) 확인")
             }
 
             DatePicker(
@@ -288,15 +297,6 @@ struct CouponImportSheet: View {
     }
 
     @MainActor
-    private func loadBundledDemoCoupon() async {
-        guard let image = UIImage(named: "CouponOCRDemo") else {
-            errorMessage = "시연용 쿠폰 이미지를 찾지 못했어요. 앱 번들을 다시 빌드해 주세요."
-            return
-        }
-        await recognize(image)
-    }
-
-    @MainActor
     private func recognize(_ image: UIImage) async {
         isRecognizing = true
         errorMessage = nil
@@ -305,20 +305,35 @@ struct CouponImportSheet: View {
         do {
             previewImage = image
             let ocr = CouponOCRService()
-            async let recognizedText = ocr.recognizeRawText(in: image)
-            async let detectedBarcodes = ocr.detectRedeemableCouponBarcodes(in: image)
-            rawText = try await recognizedText
-            barcodeCandidates = (try? await detectedBarcodes) ?? []
+            // Run Vision requests in a defined order. It is only a few milliseconds slower for
+            // one imported coupon and avoids competing OCR/barcode requests on Simulator.
+            rawText = try await ocr.recognizeRawText(in: image)
+            barcodeCandidates = (try? await ocr.detectRedeemableCouponBarcodes(in: image)) ?? []
             selectedBarcode = barcodeCandidates.first
             saveRedeemableBarcode = false
             draft = CouponOCRParser.makeDraft(from: rawText)
             usedAINormalization = false
+            officialPriceEvidence = nil
+            if AppState.isSubmissionSimulation {
+                draft.referencePrice = SubmissionCapturePriceCatalog.referencePrice(
+                    brand: draft.brand,
+                    productName: draft.title
+                )
+            }
             let redactedRemoteText = CouponOCRParser.redactedForRemoteNormalization(rawText)
-            if await appState.ensureFirebaseAuthentication(),
-               !redactedRemoteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-               let normalization = try? await AgentAPIService().normalizeCoupon(rawText: redactedRemoteText) {
-                draft.applyLLMNormalization(normalization)
-                usedAINormalization = true
+            if !AppState.isSubmissionSimulation, await appState.ensureFirebaseAuthentication() {
+                let service = AgentAPIService()
+                if !redactedRemoteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                   let normalization = try? await service.normalizeCoupon(rawText: redactedRemoteText) {
+                    draft.applyLLMNormalization(normalization)
+                    usedAINormalization = true
+                }
+                if !draft.brand.isEmpty,
+                   !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                   let price = try? await service.fetchOfficialProductPrice(brand: draft.brand, productName: draft.title) {
+                    draft.referencePrice = price.priceWon
+                    officialPriceEvidence = price
+                }
             }
         } catch {
             errorMessage = "이미지를 읽지 못했어요. 더 선명한 쿠폰 이미지를 선택해 주세요."

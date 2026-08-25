@@ -209,6 +209,9 @@ final class AppState: ObservableObject {
     /// Location callbacks can happen before the anonymous sign-in started at launch completes.
     /// Wait for that one shared task so a real store entry never falls back to an API error.
     func ensureFirebaseAuthentication() async -> Bool {
+        // Submission capture uses a local fixture account. It must never attempt an anonymous
+        // Firebase sign-in or Firestore access just because an OCR sample was selected.
+        guard !Self.isSubmissionSimulation else { return false }
         guard privacyConsent.permitsService else { return false }
         guard FirebaseApp.app() != nil else { return false }
         if let user = Auth.auth().currentUser {
@@ -517,7 +520,14 @@ final class AppState: ObservableObject {
     /// Local data is the immediate source of truth on one anonymously authenticated device.
     /// Reconciliation is idempotent, so a partial Firestore failure can safely retry later.
     private func scheduleCloudReconciliation(delayNanoseconds: UInt64 = 350_000_000) {
+        // The screenshot/demo fixture deliberately resembles a signed-in account but is not an
+        // authenticated Firebase principal. Keep every fixture mutation on-device.
+        guard !Self.isSubmissionSimulation else { return }
         guard privacyConsent.permitsService else {
+            cloudSyncState = .localOnly
+            return
+        }
+        guard FirebaseApp.app() != nil else {
             cloudSyncState = .localOnly
             return
         }
@@ -575,7 +585,9 @@ final class AppState: ObservableObject {
             cloudReconciliationTask?.cancel()
             await cloudReconciliationTask?.value
             cloudReconciliationTask = nil
-            if let uid { try await FirestoreRepository.shared.deleteAllUserData(uid: uid) }
+            if !Self.isSubmissionSimulation, FirebaseApp.app() != nil, let uid {
+                try await FirestoreRepository.shared.deleteAllUserData(uid: uid)
+            }
             if FirebaseApp.app() != nil, let user = Auth.auth().currentUser, uid == nil || user.uid == uid {
                 try await user.delete()
                 firebaseUserID = nil

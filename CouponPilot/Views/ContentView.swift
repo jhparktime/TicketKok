@@ -35,7 +35,6 @@ struct ContentView: View {
     @State private var showNotificationSettings = false
     @State private var showSyncStatus = false
     @Namespace private var dockSelectionNamespace
-    @State private var notificationCaptureScheduled = false
 
     var body: some View {
         if appState.privacyConsent.permitsService {
@@ -51,24 +50,20 @@ struct ContentView: View {
     }
 
     private var mainContent: some View {
-        ZStack {
+        VStack(spacing: 0) {
             selectedTabContent
                 .id(selectedTab)
                 .transition(.asymmetric(
                     insertion: .move(edge: .bottom).combined(with: .opacity),
                     removal: .opacity
                 ))
-                .safeAreaInset(edge: .bottom) {
-                    Color.clear.frame(height: 88)
-                }
+            floatingTabDock
+                .padding(.horizontal, 18)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
         }
         .tint(AppPalette.accent)
         .animation(.spring(response: 0.42, dampingFraction: 0.88), value: selectedTab)
-        .overlay(alignment: .bottom) {
-            floatingTabDock
-                .padding(.horizontal, 18)
-                .padding(.bottom, 4)
-        }
         .overlay(alignment: .bottom) {
             VStack(spacing: 10) {
                 if let coupon = appState.recentlyUsedCoupon {
@@ -123,7 +118,6 @@ struct ContentView: View {
         .animation(.snappy, value: appState.recentlyDeletedCoupon?.id)
         .onAppear {
             guard !AppState.isSubmissionSimulation else {
-                scheduleNotificationCaptureIfNeeded()
                 if ["coupon-detail", "barcode"].contains(AppState.captureTarget), selectedRecommendationCoupon == nil {
                     selectedRecommendationCoupon = appState.coupons.first
                 }
@@ -661,7 +655,7 @@ struct ContentView: View {
                 Text("\(coupon.brand) · \(coupon.expiresAt.formatted(date: .numeric, time: .omitted))까지")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(AppPalette.muted)
-                Text(coupon.discountType == .percentage ? "최대 \(coupon.discountValue)% 할인" : "\(coupon.discountValue.formatted())원 할인")
+                    Text(couponDisplayValue(coupon))
                     .font(.system(size: 19, weight: .bold))
                     .foregroundStyle(AppPalette.ink)
             }
@@ -748,7 +742,7 @@ struct ContentView: View {
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Text(coupon.discountType == .percentage ? "\(coupon.discountValue)%" : "−\(coupon.discountValue.formatted())원")
+                            Text(couponListValue(coupon))
                                 .font(.subheadline.weight(.bold))
                                 .foregroundStyle(AppPalette.accent)
                         }
@@ -765,6 +759,22 @@ struct ContentView: View {
                 }
             }
         }
+    }
+
+    private func couponDisplayValue(_ coupon: Coupon) -> String {
+        if coupon.discountValue == 0, let referencePrice = coupon.referencePrice {
+            return "기준가 \(referencePrice.formatted())원"
+        }
+        return coupon.discountType == .percentage
+            ? "최대 \(coupon.discountValue)% 할인"
+            : "\(coupon.discountValue.formatted())원 할인"
+    }
+
+    private func couponListValue(_ coupon: Coupon) -> String {
+        if coupon.discountValue == 0, let referencePrice = coupon.referencePrice {
+            return "기준가 \(referencePrice.formatted())원"
+        }
+        return coupon.discountType == .percentage ? "\(coupon.discountValue)%" : "−\(coupon.discountValue.formatted())원"
     }
 
     private var historyScreen: some View {
@@ -1104,23 +1114,6 @@ struct ContentView: View {
         await notificationManager.notifyStoreEntry(store, couponCount: matchingCoupons.count)
         guard let recommendation = await requestRecommendation(for: store, presentsFailureAlert: false) else { return }
         _ = recommendation
-    }
-
-    /// A capture-only launch mode sends the same local store-entry notification used by the app.
-    /// It has no UI label and is never enabled in normal/TestFlight launches.
-    private func scheduleNotificationCaptureIfNeeded() {
-        guard AppState.isNotificationCapture, !notificationCaptureScheduled else { return }
-        notificationCaptureScheduled = true
-        Task {
-            await notificationManager.requestAuthorization()
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-            await notificationManager.notifyStoreEntry(
-                .suwonSubmissionTwosome,
-                couponCount: 2,
-                savings: 2_000,
-                identifier: "notification-capture-\(UUID().uuidString)"
-            )
-        }
     }
 
     private func handleNotificationTapIfNeeded() {

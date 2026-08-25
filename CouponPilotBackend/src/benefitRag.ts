@@ -30,6 +30,17 @@ export type CalculatorBenefitRule = {
 
 export type BenefitLifecycleStatus = "draft" | "reviewed" | "active" | "expired" | "withdrawn" | "retired";
 
+/**
+ * A price is intentionally separate from a discount rule. It may provide a reference price to
+ * the Calculator, but can never create a discount or change the Calculator's arithmetic.
+ */
+export type OfficialProductPrice = {
+  productName: string;
+  /** OCR aliases must resolve to this one reviewed product, never a fuzzy best guess. */
+  aliases?: string[];
+  priceWon: number;
+};
+
 export type BenefitGovernance = {
   /** Only active documents can enter retrieval or the deterministic Calculator. */
   status: BenefitLifecycleStatus;
@@ -56,6 +67,7 @@ export type BenefitChunk = {
   text: string;
   embedding: number[];
   rule?: CalculatorBenefitRule;
+  productPrices?: OfficialProductPrice[];
   lifecycleStatus?: BenefitLifecycleStatus;
   checkedAt?: string;
   staleAfter?: string;
@@ -76,6 +88,7 @@ export type BenefitDocument = {
   sourceURL: string;
   content: string;
   rule?: CalculatorBenefitRule;
+  productPrices?: OfficialProductPrice[];
   governance: BenefitGovernance;
 };
 
@@ -100,7 +113,8 @@ const OFFICIAL_DOMAINS_BY_PROVIDER: Record<string, string[]> = {
   "LG U+": ["lguplus.com"],
   "신한카드 Mr.Life": ["shinhancard.com"],
   "KB국민 톡톡 Pay카드": ["kbcard.com"],
-  "현대카드 M": ["hyundaicard.com"]
+  "현대카드 M": ["hyundaicard.com"],
+  "스타벅스": ["starbucks.co.kr"]
 };
 
 function sha256(value: string) {
@@ -179,6 +193,28 @@ function validateCalculatorRule(rule: CalculatorBenefitRule, provider: string) {
   }
 }
 
+function normalizedProductKey(value: string) {
+  return value.toLocaleLowerCase("ko-KR").replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+function validateOfficialProductPrices(prices: OfficialProductPrice[] | undefined) {
+  if (!prices) return;
+  if (!prices.length || prices.length > 100) throw new Error("Product-price documents require between 1 and 100 entries");
+  const seen = new Set<string>();
+  for (const price of prices) {
+    if (!price.productName.trim() || price.productName.length > 200) throw new Error("Product price requires a product name");
+    if (!Number.isInteger(price.priceWon) || price.priceWon < 1 || price.priceWon > 1_000_000) {
+      throw new Error("Product price must be a positive whole-won amount");
+    }
+    for (const value of [price.productName, ...(price.aliases ?? [])]) {
+      const key = normalizedProductKey(value);
+      if (key.length < 3) throw new Error("Product-price names and aliases must be specific");
+      if (seen.has(key)) throw new Error("Product-price aliases must be unique within a document");
+      seen.add(key);
+    }
+  }
+}
+
 export function validateBenefitDocument(document: BenefitDocument) {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9-_]{0,127}$/u.test(document.id)) throw new Error("Document id must be a stable ASCII identifier");
   if (!document.title.trim() || document.content.trim().length < 60) throw new Error("Document title and at least 60 characters of content are required");
@@ -199,6 +235,7 @@ export function validateBenefitDocument(document: BenefitDocument) {
     throw new Error("Active RAG documents require a reviewed license or usage-rights decision");
   }
   if (document.rule) validateCalculatorRule(document.rule, document.provider);
+  validateOfficialProductPrices(document.productPrices);
   return document;
 }
 
@@ -343,6 +380,7 @@ function governedChunk(document: BenefitDocument, text: string, embedding: numbe
     text,
     embedding,
     rule: document.rule,
+    productPrices: document.productPrices,
     lifecycleStatus: document.governance.status,
     checkedAt: document.governance.checkedAt,
     staleAfter: document.governance.staleAfter,
@@ -371,7 +409,8 @@ function enrichLegacyChunk(chunk: BenefitChunk): BenefitChunk | undefined {
     reviewer: document.governance.reviewer,
     license: document.governance.license,
     contentHash: sha256(document.content),
-    rule: document.rule
+    rule: document.rule,
+    productPrices: document.productPrices
   };
 }
 
@@ -387,6 +426,7 @@ function chunkIsRetrievable(chunk: BenefitChunk, now = new Date()) {
   if (!sourceURLIsOfficial(chunk.provider, chunk.sourceURL)) return false;
   try {
     if (chunk.rule) validateCalculatorRule(chunk.rule, chunk.provider);
+    validateOfficialProductPrices(chunk.productPrices);
   } catch {
     return false;
   }
@@ -612,6 +652,45 @@ export async function searchOfficialBenefits(query: string, limit = 4) {
     .filter((chunk) => chunk.score >= minimumScore)
     .sort((left, right) => right.score - left.score)
     .slice(0, limit);
+}
+
+export type OfficialProductPriceMatch = {
+  brand: string;
+  productName: string;
+  priceWon: number;
+  sourceTitle: string;
+  sourceURL: string;
+  checkedAt: string;
+  version: string;
+};
+
+/**
+ * Exact product-catalog lookup for an OCR result. This deliberately does not use semantic
+ * similarity: returning a nearby menu item with a different size or composition would be a
+ * price hallucination. Conflicting active sources also fail closed.
+ */
+export async function findOfficialProductPrice(brand: string, productName: string): Promise<OfficialProductPriceMatch | undefined> {
+  const normalizedBrand = normalizedProductKey(brand);
+  const normalizedProduct = normalizedProductKey(productName);
+  if (normalizedBrand.length < 2 || normalizedProduct.length < 3) return undefined;
+
+  const index = await loadIndex();
+  const matches = index.flatMap((chunk) => {
+    if (normalizedProductKey(chunk.provider) !== normalizedBrand) return [];
+    return (chunk.productPrices ?? [])
+      .filter((entry) => [entry.productName, ...(entry.aliases ?? [])].some((value) => normalizedProductKey(value) === normalizedProduct))
+      .map((entry) => ({
+        brand: chunk.provider,
+        productName: entry.productName,
+        priceWon: entry.priceWon,
+        sourceTitle: chunk.title,
+        sourceURL: chunk.sourceURL,
+        checkedAt: chunk.checkedAt!,
+        version: chunk.version!
+      }));
+  });
+  const distinctPrices = new Set(matches.map((match) => `${match.priceWon}:${match.sourceURL}:${match.version}`));
+  return distinctPrices.size === 1 ? matches[0] : undefined;
 }
 
 async function seedBundledCarrierBenefits(): Promise<BenefitChunk[]> {

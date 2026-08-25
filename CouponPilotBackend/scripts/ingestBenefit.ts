@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
-import { submitOfficialBenefitCandidate, type CalculatorBenefitRule } from "../src/benefitRag.js";
+import { submitOfficialBenefitCandidate, type CalculatorBenefitRule, type OfficialProductPrice } from "../src/benefitRag.js";
 
 const args = process.argv.slice(2);
 const value = (name: string) => {
@@ -17,7 +17,7 @@ const reviewer = value("--reviewer");
 const version = value("--version");
 const license = value("--license");
 if (!file || !title || !provider || !sourceURL || !checkedAt || !staleAfter || !reviewer || !version || !license) {
-  throw new Error("Usage: npm run ingest:benefit -- --file <official.md> --title <title> --provider <provider> --source-url <https://official-url> --checked-at YYYY-MM-DD --stale-after YYYY-MM-DD --reviewer <name> --version <immutable-version> --license <reviewed-rights-decision> [--effective-from YYYY-MM-DD --effective-to YYYY-MM-DD --limitations condition1,condition2 --kind carrier|card --percent 10 --fixed 0 --max 3000 --min 10000 --combinable true --grades VIP,VVIP --stores 스타벅스 --requires-available true --card-product-id shinhancard-mr-life --requires-previous-spend true --hours 21,22,23,0]");
+  throw new Error("Usage: npm run ingest:benefit -- --file <official.md> --title <title> --provider <provider> --source-url <https://official-url> --checked-at YYYY-MM-DD --stale-after YYYY-MM-DD --reviewer <name> --version <immutable-version> --license <reviewed-rights-decision> [--effective-from YYYY-MM-DD --effective-to YYYY-MM-DD --limitations condition1,condition2 --kind carrier|card --percent 10 --fixed 0 --max 3000 --min 10000 --combinable true --grades VIP,VVIP --stores 스타벅스 --requires-available true --card-product-id shinhancard-mr-life --requires-previous-spend true --hours 21,22,23,0 --product-name <exact-product> --price-won <positive-integer> --product-aliases alias1,alias2]");
 }
 const kind = value("--kind");
 if (kind && kind !== "carrier" && kind !== "card") throw new Error("--kind must be carrier or card");
@@ -54,9 +54,19 @@ const rule: CalculatorBenefitRule | undefined = kind === "carrier" || kind === "
   requiresPreviousMonthSpend: booleanValue("--requires-previous-spend"),
   eligibleHoursKST: hours
 } : undefined;
+const productName = value("--product-name");
+const priceWon = numberValue("--price-won", 1, 1_000_000);
+if ((productName && priceWon === undefined) || (!productName && priceWon !== undefined)) {
+  throw new Error("--product-name and --price-won must be supplied together");
+}
+const productPrices: OfficialProductPrice[] | undefined = productName && priceWon !== undefined ? [{
+  productName,
+  priceWon,
+  aliases: commaValues("--product-aliases")
+}] : undefined;
 const result = await submitOfficialBenefitCandidate({
   id: basename(file).replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "-"), title, provider, sourceURL,
-  content: await readFile(file, "utf8"), rule,
+  content: await readFile(file, "utf8"), rule, productPrices,
   governance: {
     // This command submits a reviewed snapshot. It cannot affect retrieval or Calculator
     // output until an independent reviewer runs approve:benefit.

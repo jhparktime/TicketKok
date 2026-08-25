@@ -216,6 +216,8 @@ struct CouponDraft: Equatable {
     var discountValue: Int = 0
     var minimumOrderAmount: Int = 0
     var maximumDiscount: Int?
+    /// 사진 또는 공식 상품 카탈로그에서 확인된 단품 기준가입니다. 추정값은 저장하지 않습니다.
+    var referencePrice: Int?
     var expiresAt: Date = .now.addingTimeInterval(60 * 60 * 24 * 30)
     var combinableWithCard = false
     var conditions: [String] = []
@@ -253,6 +255,7 @@ struct CouponDraft: Equatable {
             maximumDiscount: discountType == .percentage ? maximumDiscount : nil,
             expiresAt: expiresAt,
             combinableWithCard: combinableWithCard,
+            referencePrice: referencePrice,
             conditions: conditions,
             localImageFilename: localImageFilename
         )
