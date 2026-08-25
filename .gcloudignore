@@ -11,4 +11,8 @@ outputs/
 work/
 **/__pycache__/
 **/.pytest_cache/
+**/.venv*/
+**/.adk/
+**/*.egg-info/
+docs/demo-video/
 **/.DS_Store
