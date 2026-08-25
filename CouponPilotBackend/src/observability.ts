@@ -24,7 +24,10 @@ export function initializeObservability() {
         optionalImport("@opentelemetry/sdk-node"),
         optionalImport("@google-cloud/opentelemetry-cloud-trace-exporter")
       ]);
-      const sdk = new NodeSDK({ traceExporter: new TraceExporter() });
+      const projectId = process.env.GOOGLE_CLOUD_PROJECT || process.env.VERTEX_PROJECT_ID;
+      const sdk = new NodeSDK({
+        traceExporter: new TraceExporter(projectId ? { projectId } : {}),
+      });
       await sdk.start();
       traceExportState = "enabled";
       process.once("SIGTERM", () => { void sdk.shutdown(); });
