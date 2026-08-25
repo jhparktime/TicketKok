@@ -77,6 +77,7 @@ jobs:
           ADK_MODEL: gemini-2.5-flash
           MCP_SERVER_URL: ${{ secrets.MCP_STAGING_URL }}
           MCP_INTERNAL_TOKEN: ${{ secrets.MCP_STAGING_TOKEN }}
+          MCP_IAM_SERVICE_ACCOUNT: ${{ secrets.GCP_EVAL_SERVICE_ACCOUNT }}
         run: |
           test -n "$MCP_SERVER_URL"
           test -n "$MCP_INTERNAL_TOKEN"

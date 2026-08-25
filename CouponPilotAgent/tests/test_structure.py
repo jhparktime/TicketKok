@@ -32,6 +32,35 @@ def test_request_workflow_is_fresh_but_keeps_the_contract() -> None:
     assert fresh.max_concurrency == 2
 
 
+def test_wif_fallback_impersonates_the_evaluation_service_account(monkeypatch) -> None:
+    """GitHub WIF lacks a metadata-server ID token, so it uses IAM impersonation."""
+    from couponcok_agent import agent as agent_module
+
+    captured = {}
+
+    def no_direct_id_token(*_args, **_kwargs):
+        raise agent_module.DefaultCredentialsError("external account")
+
+    class FakeIDTokenCredentials:
+        token = "wif-id-token"
+
+        def __init__(self, **kwargs):
+            captured["id_token"] = kwargs
+
+        def refresh(self, _request):
+            return None
+
+    monkeypatch.setattr(agent_module, "MCP_IAM_SERVICE_ACCOUNT", "eval@example.iam.gserviceaccount.com")
+    monkeypatch.setattr(agent_module.id_token, "fetch_id_token", no_direct_id_token)
+    monkeypatch.setattr(agent_module, "google_auth_default", lambda **_kwargs: ("source-credentials", "project"))
+    monkeypatch.setattr(agent_module.impersonated_credentials, "Credentials", lambda **kwargs: captured.setdefault("impersonated", kwargs) or "impersonated-credentials")
+    monkeypatch.setattr(agent_module.impersonated_credentials, "IDTokenCredentials", FakeIDTokenCredentials)
+
+    assert agent_module._cloud_run_id_token("https://mcp.example.run.app") == "wif-id-token"
+    assert captured["impersonated"]["target_principal"] == "eval@example.iam.gserviceaccount.com"
+    assert captured["id_token"]["target_audience"] == "https://mcp.example.run.app"
+
+
 def test_health_contract() -> None:
     response = TestClient(api).get("/health")
     assert response.status_code == 200

@@ -17,6 +17,9 @@ from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import (
     StreamableHTTPConnectionParams,
 )
+from google.auth import default as google_auth_default
+from google.auth import impersonated_credentials
+from google.auth.exceptions import DefaultCredentialsError
 from google.auth.transport.requests import Request as GoogleAuthRequest
 from google.genai import types
 from google.oauth2 import id_token
@@ -43,6 +46,7 @@ if os.getenv("AGENTOPS_API_KEY"):
 MODEL = os.getenv("ADK_MODEL", "gemini-2.5-flash")
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://127.0.0.1:8081/mcp")
 MCP_INTERNAL_TOKEN = os.getenv("MCP_INTERNAL_TOKEN", "")
+MCP_IAM_SERVICE_ACCOUNT = os.getenv("MCP_IAM_SERVICE_ACCOUNT", "")
 
 
 class AgentStepResult(BaseModel):
@@ -86,6 +90,37 @@ def _generation_config(max_output_tokens: int) -> types.GenerateContentConfig:
     )
 
 
+def _cloud_run_id_token(audience: str) -> str:
+    """Issue a Cloud Run ID token for both runtime and GitHub WIF callers."""
+
+    try:
+        return id_token.fetch_id_token(GoogleAuthRequest(), audience)
+    except DefaultCredentialsError:
+        # GitHub's WIF credentials are an external-account credential, not a
+        # local key or metadata-server identity.  It must impersonate the
+        # explicitly configured evaluation service account to mint an ID token.
+        if not MCP_IAM_SERVICE_ACCOUNT:
+            raise
+        source_credentials, _ = google_auth_default(
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        impersonated = impersonated_credentials.Credentials(
+            source_credentials=source_credentials,
+            target_principal=MCP_IAM_SERVICE_ACCOUNT,
+            target_scopes=["https://www.googleapis.com/auth/cloud-platform"],
+            lifetime=3600,
+        )
+        target_credentials = impersonated_credentials.IDTokenCredentials(
+            target_credentials=impersonated,
+            target_audience=audience,
+            include_email=True,
+        )
+        target_credentials.refresh(GoogleAuthRequest())
+        if not target_credentials.token:
+            raise RuntimeError("failed to mint Cloud Run ID token for MCP evaluation")
+        return target_credentials.token
+
+
 def _mcp_toolset(*tool_names: str) -> McpToolset:
     headers = {}
     if MCP_INTERNAL_TOKEN:
@@ -93,7 +128,7 @@ def _mcp_toolset(*tool_names: str) -> McpToolset:
     if MCP_SERVER_URL.startswith("https://"):
         parsed = urlparse(MCP_SERVER_URL)
         audience = f"{parsed.scheme}://{parsed.netloc}"
-        headers["Authorization"] = f"Bearer {id_token.fetch_id_token(GoogleAuthRequest(), audience)}"
+        headers["Authorization"] = f"Bearer {_cloud_run_id_token(audience)}"
     return McpToolset(
         connection_params=StreamableHTTPConnectionParams(
             url=MCP_SERVER_URL,
