@@ -20,13 +20,18 @@ export function initializeObservability() {
     if (!cloudTraceRequested()) return;
     traceExportState = "initializing";
     try {
-      const [{ NodeSDK }, { TraceExporter }] = await Promise.all([
+      const [{ NodeSDK }, { TraceExporter }, { BatchSpanProcessor }] = await Promise.all([
         optionalImport("@opentelemetry/sdk-node"),
-        optionalImport("@google-cloud/opentelemetry-cloud-trace-exporter")
+        optionalImport("@google-cloud/opentelemetry-cloud-trace-exporter"),
+        optionalImport("@opentelemetry/sdk-trace-base")
       ]);
       const projectId = process.env.GOOGLE_CLOUD_PROJECT || process.env.VERTEX_PROJECT_ID;
+      const exporter = new TraceExporter(projectId ? { projectId } : {});
       const sdk = new NodeSDK({
-        traceExporter: new TraceExporter(projectId ? { projectId } : {}),
+        spanProcessors: [new BatchSpanProcessor(exporter, {
+          scheduledDelayMillis: 1_000,
+          exportTimeoutMillis: 10_000,
+        })],
       });
       await sdk.start();
       traceExportState = "enabled";
