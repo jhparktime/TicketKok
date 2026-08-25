@@ -66,7 +66,10 @@ coupon_context 또는 benefit_context가 skipped여도 기다리지 말고, 사�
 """,
 }
 
-_MANIFEST_PATH = Path(__file__).parents[1] / "prompt_manifest.json"
+# Keep the manifest beside the package so it is present after ``pip install``.
+# The repository-root copy remains the human-editable counterpart used by Docker
+# and CI, while this packaged copy is the runtime source of truth.
+_MANIFEST_PATH = Path(__file__).with_name("prompt_manifest.json")
 
 
 def _digest(prompt: str) -> str:

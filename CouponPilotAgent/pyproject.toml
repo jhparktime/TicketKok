@@ -18,3 +18,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["couponcok_agent*"]
+
+[tool.setuptools.package-data]
+couponcok_agent = ["prompt_manifest.json"]
